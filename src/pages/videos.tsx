@@ -71,10 +71,12 @@ export default function VideosPage() {
   // Use real video performance data from API (authentic YouTube metrics only)
   const processedVideos: VideoData[] = weeklyData?.video_performance || [];
 
-  // Sort videos by views this week (descending)
-  const sortedVideos = [...processedVideos].sort((a, b) => 
-    (b.views_this_week || 0) - (a.views_this_week || 0)
-  );
+  // Sort videos by latest upload date (most recent first)
+  const sortedVideos = [...processedVideos].sort((a, b) => {
+    const dateA = new Date(a.published_at);
+    const dateB = new Date(b.published_at);
+    return dateB.getTime() - dateA.getTime(); // Most recent first
+  });
 
   // Get top 5 videos for growth visualization
   const top5Videos = sortedVideos.slice(0, 5);
