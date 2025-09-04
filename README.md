@@ -1,6 +1,10 @@
 # SalesTrack Frontend
 
-Frontend dashboard for the YouTube Analytics tracking system. Built with Next.js, TypeScript, and Tailwind CSS.
+**Frontend-only repository** for the YouTube Analytics tracking system. Built with Next.js, TypeScript, and Tailwind CSS.
+
+> **📁 Repository Structure:**
+> - **Frontend**: This repository ([SalesTrack-Frontend](https://github.com/Samin12/SalesTrack-Frontend))
+> - **Backend**: Separate repository ([SalesTrack-Backend](https://github.com/Samin12/SalesTrack-Backend))
 
 ## 🚀 Features
 
@@ -38,7 +42,34 @@ Frontend dashboard for the YouTube Analytics tracking system. Built with Next.js
 
 ## 🔗 Related Repositories
 
-- **Backend**: [SalesTrack Backend](https://github.com/Samin12/SalesTrack)
+- **Backend**: [SalesTrack Backend](https://github.com/Samin12/SalesTrack-Backend)
+- **Current Backend URL**: `https://web-production-ad878.up.railway.app`
+
+## 🏗️ Local Development
+
+1. **Clone this repository**:
+   ```bash
+   git clone https://github.com/Samin12/SalesTrack-Frontend.git
+   cd SalesTrack-Frontend
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Set environment variables**:
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your backend URL
+   ```
+
+4. **Run development server**:
+   ```bash
+   npm run dev
+   ```
+
+5. **Open**: [http://localhost:3000](http://localhost:3000)
 
 ## 📄 License
 
