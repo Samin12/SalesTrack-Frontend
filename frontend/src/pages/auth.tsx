@@ -11,6 +11,7 @@ export default function AuthPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -48,8 +49,9 @@ export default function AuthPage() {
     }
   };
 
-  // Check if already authenticated
+  // Check if already authenticated after component mounts
   useEffect(() => {
+    setIsClient(true);
     if (apiClient.isAuthenticated()) {
       router.push('/');
     }

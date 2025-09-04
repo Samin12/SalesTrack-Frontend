@@ -100,6 +100,7 @@ class UTMService:
         tracking_url = self._build_tracking_url(destination_url, utm_params)
 
         # Generate direct URL for GA4-only tracking
+        # For direct GA4, this should always be the destination URL with UTM parameters
         direct_url = tracking_url if tracking_type == "direct_ga4" else None
 
         # Generate pretty slug for both tracking types (for short URLs)

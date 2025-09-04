@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import Layout from '../components/Layout/Layout';
-import MetricCard from '../components/UI/MetricCard';
+import MetricCard from '../components/custom/MetricCard';
 import {
   CombinedVideoAnalytics,
   VideoOverview,
@@ -58,25 +58,33 @@ const Analytics: NextPage = () => {
     }
   };
 
-  const formatNumber = (num: number): string => {
+  const formatNumber = (num: number | null | undefined): string => {
+    if (num === null || num === undefined || isNaN(num)) {
+      return '0';
+    }
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
   };
 
-  const formatPercentage = (num: number): string => {
+  const formatPercentage = (num: number | null | undefined): string => {
+    if (num === null || num === undefined || isNaN(num)) {
+      return '0.0%';
+    }
     return `${num >= 0 ? '+' : ''}${num.toFixed(1)}%`;
   };
 
-  const GrowthIndicator: React.FC<{ value: number; className?: string }> = ({ value, className = '' }) => {
-    const isPositive = value >= 0;
+  const GrowthIndicator: React.FC<{ value: number | null | undefined; className?: string }> = ({ value, className = '' }) => {
+    // Handle null/undefined values
+    const safeValue = value ?? 0;
+    const isPositive = safeValue >= 0;
     const Icon = isPositive ? ArrowUpIcon : ArrowDownIcon;
     const colorClass = isPositive ? 'text-green-600' : 'text-red-600';
-    
+
     return (
       <div className={`flex items-center ${colorClass} ${className}`}>
         <Icon className="h-4 w-4 mr-1" />
-        <span className="text-sm font-medium">{formatPercentage(value)}</span>
+        <span className="text-sm font-medium">{formatPercentage(safeValue)}</span>
       </div>
     );
   };
@@ -103,7 +111,7 @@ const Analytics: NextPage = () => {
         {formatNumber(video.total_utm_clicks)}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {(video.click_through_rate * 100).toFixed(2)}%
+        {((video.click_through_rate || 0) * 100).toFixed(2)}%
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex space-x-2">
@@ -188,7 +196,7 @@ const Analytics: NextPage = () => {
                 <div className="text-center">
                   <p className="text-2xl font-bold text-purple-600">
                     {analyticsData.videos.length > 0 ?
-                      Math.max(...analyticsData.videos.map(v => v.click_through_rate * 100)).toFixed(2) : 0}%
+                      Math.max(...analyticsData.videos.map(v => (v.click_through_rate || 0) * 100)).toFixed(2) : 0}%
                   </p>
                   <p className="text-sm text-gray-600">Best CTR</p>
                 </div>
@@ -213,7 +221,7 @@ const Analytics: NextPage = () => {
               />
               <MetricCard
                 title="Average CTR"
-                value={`${(analyticsData.averageCTR * 100).toFixed(2)}%`}
+                value={`${((analyticsData.averageCTR || 0) * 100).toFixed(2)}%`}
                 change={analyticsData.weeklyGrowth.ctr}
                 changeLabel="this week"
                 icon={ChartBarIcon}
@@ -237,7 +245,7 @@ const Analytics: NextPage = () => {
                   <div className="space-y-4">
                     {analyticsData.videos
                       .filter(video => video.total_utm_clicks > 0)
-                      .sort((a, b) => b.click_through_rate - a.click_through_rate)
+                      .sort((a, b) => (b.click_through_rate || 0) - (a.click_through_rate || 0))
                       .slice(0, 5)
                       .map((video, index) => (
                         <div key={video.video_info.video_id} className="flex items-center justify-between">
@@ -261,7 +269,7 @@ const Analytics: NextPage = () => {
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-medium text-gray-900">
-                              {(video.click_through_rate * 100).toFixed(2)}%
+                              {((video.click_through_rate || 0) * 100).toFixed(2)}%
                             </p>
                             <GrowthIndicator value={video.weekly_growth.clicks_growth} className="justify-end" />
                           </div>

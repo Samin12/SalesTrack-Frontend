@@ -2,10 +2,10 @@
 nixPkgs = ['nodejs_18', 'npm']
 
 [phases.install]
-cmds = ['rm -rf node_modules/.cache || true', 'npm install --no-optional']
+cmds = ['rm -rf node_modules/.cache || true', 'npm ci']
 
 [phases.build]
 cmds = ['npm run build']
 
 [start]
-cmd = 'next start -p $PORT'
+cmd = 'npm start'

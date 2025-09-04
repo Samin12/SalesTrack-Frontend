@@ -4,7 +4,7 @@
 import React from 'react';
 import useSWR from 'swr';
 import Layout from '@/components/Layout/Layout';
-import MetricCard from '@/components/UI/MetricCard';
+import MetricCard from '@/components/custom/MetricCard';
 import GrowthChart from '@/components/Charts/GrowthChart';
 import {
   UsersIcon,
@@ -85,16 +85,16 @@ export default function Dashboard() {
             title="Subscribers"
             value={overview?.channel_overview?.subscriber_count || 0}
             change={overview?.recent_growth?.subscriber_growth_rate}
-            changeLabel="this week"
+            changeLabel="total"
             icon={UsersIcon}
             loading={isLoading}
           />
-          
+
           <MetricCard
             title="Total Views"
             value={overview?.channel_overview?.view_count || 0}
             change={overview?.recent_growth?.view_growth_rate}
-            changeLabel="this week"
+            changeLabel="lifetime"
             icon={EyeIcon}
             loading={isLoading}
           />

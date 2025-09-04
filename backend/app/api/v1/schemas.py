@@ -110,9 +110,9 @@ class WeeklyVideoPerformance(BaseModel):
     like_count: int
     comment_count: int
     duration_seconds: Optional[int] = None
-    views_this_week: int
-    views_last_week: int
-    weekly_growth_rate: float
+    views_this_week: Optional[int] = None  # None when historical data not available
+    views_last_week: Optional[int] = None  # None when historical data not available
+    weekly_growth_rate: Optional[float] = None  # None when historical data not available
 
     class Config:
         from_attributes = True
@@ -120,9 +120,9 @@ class WeeklyVideoPerformance(BaseModel):
 
 class WeeklySummary(BaseModel):
     """Weekly summary schema - authentic YouTube metrics only."""
-    total_views_this_week: int
-    total_views_last_week: int
-    views_growth_rate: float
+    total_views_this_week: Optional[int] = None  # None when historical data not available
+    total_views_last_week: Optional[int] = None  # None when historical data not available
+    views_growth_rate: Optional[float] = None  # None when historical data not available
     active_videos: int
     total_videos: int
 

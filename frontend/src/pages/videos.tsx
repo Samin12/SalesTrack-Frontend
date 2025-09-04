@@ -79,7 +79,10 @@ export default function VideosPage() {
   // Get top 5 videos for growth visualization
   const top5Videos = sortedVideos.slice(0, 5);
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number | null | undefined) => {
+    if (num === null || num === undefined || isNaN(num)) {
+      return '0';
+    }
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
@@ -178,6 +181,29 @@ export default function VideosPage() {
             </div>
           </div>
 
+          {/* Data Transparency Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  Authentic Data Only
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>
+                    This dashboard shows only real YouTube metrics from the YouTube API.
+                    Weekly tracking features require historical data collection and will show "N/A" until implemented.
+                    No fabricated or estimated data is displayed.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Weekly Summary Header - Authentic YouTube Metrics Only */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -185,17 +211,26 @@ export default function VideosPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Views This Week</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatNumber(weeklySummary.total_views_this_week)}
+                    {weeklySummary.total_views_this_week !== null
+                      ? formatNumber(weeklySummary.total_views_this_week)
+                      : 'N/A'
+                    }
                   </p>
                 </div>
                 <EyeIcon className="h-8 w-8 text-blue-500" />
               </div>
               <div className="mt-2 flex items-center">
-                {getGrowthIcon(weeklySummary.views_growth_rate)}
-                <span className={`ml-1 text-sm font-medium ${getGrowthColor(weeklySummary.views_growth_rate)}`}>
-                  {weeklySummary.views_growth_rate > 0 ? '+' : ''}{weeklySummary.views_growth_rate.toFixed(1)}%
-                </span>
-                <span className="text-sm text-gray-500 ml-2">vs last week</span>
+                {weeklySummary.views_growth_rate !== null ? (
+                  <>
+                    {getGrowthIcon(weeklySummary.views_growth_rate)}
+                    <span className={`ml-1 text-sm font-medium ${getGrowthColor(weeklySummary.views_growth_rate)}`}>
+                      {weeklySummary.views_growth_rate > 0 ? '+' : ''}{weeklySummary.views_growth_rate.toFixed(1)}%
+                    </span>
+                    <span className="text-sm text-gray-500 ml-2">vs last week</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-gray-500">Requires historical data</span>
+                )}
               </div>
             </div>
 
@@ -221,14 +256,20 @@ export default function VideosPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Last Week Views</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatNumber(weeklySummary.total_views_last_week)}
+                    {weeklySummary.total_views_last_week !== null
+                      ? formatNumber(weeklySummary.total_views_last_week)
+                      : 'N/A'
+                    }
                   </p>
                 </div>
                 <UsersIcon className="h-8 w-8 text-purple-500" />
               </div>
               <div className="mt-2">
                 <span className="text-sm text-gray-500">
-                  Previous week total
+                  {weeklySummary.total_views_last_week !== null
+                    ? 'Previous week total'
+                    : 'Requires historical data'
+                  }
                 </span>
               </div>
             </div>
@@ -328,18 +369,24 @@ export default function VideosPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {formatNumber(video.views_this_week || 0)}
+                            {video.views_this_week !== null ? formatNumber(video.views_this_week) : 'N/A'}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {formatNumber(video.views_last_week || 0)} last week
+                            {video.views_last_week !== null ? `${formatNumber(video.views_last_week)} last week` : 'Historical data needed'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            {getGrowthIcon(video.weekly_growth_rate || 0)}
-                            <span className={`ml-1 text-sm font-medium ${getGrowthColor(video.weekly_growth_rate || 0)}`}>
-                              {(video.weekly_growth_rate || 0) > 0 ? '+' : ''}{(video.weekly_growth_rate || 0).toFixed(1)}%
-                            </span>
+                            {video.weekly_growth_rate !== null && video.weekly_growth_rate !== undefined ? (
+                              <>
+                                {getGrowthIcon(video.weekly_growth_rate)}
+                                <span className={`ml-1 text-sm font-medium ${getGrowthColor(video.weekly_growth_rate)}`}>
+                                  {video.weekly_growth_rate > 0 ? '+' : ''}{video.weekly_growth_rate.toFixed(1)}%
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-500">N/A</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -347,7 +394,9 @@ export default function VideosPage() {
                             {video.comment_count} comments
                           </div>
                           <div className="text-sm text-gray-500">
-                            {((video.like_count + video.comment_count) / video.view_count * 100).toFixed(1)}% rate
+                            {video.view_count > 0 ?
+                              (((video.like_count + video.comment_count) / video.view_count) * 100).toFixed(1) :
+                              '0.0'}% rate
                           </div>
                         </td>
                       </tr>

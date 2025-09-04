@@ -154,7 +154,8 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
     if (!generatedLink) return;
 
     try {
-      // Use shareable_url for consistent short URL copying
+      // For direct GA4, use the shareable_url directly (it's now the destination URL with UTM)
+      // For server redirect, prepend the origin
       const urlToCopy = generatedLink.tracking_type === 'direct_ga4'
         ? generatedLink.shareable_url
         : `${window.location.origin}${generatedLink.shareable_url}`;
@@ -179,10 +180,13 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
 
   const handleCopyLink = async (link: UTMLink) => {
     try {
-      // Always create full URL for copying
-      const urlToCopy = link.shareable_url.startsWith('/')
-        ? `${window.location.origin}${link.shareable_url}`
-        : link.shareable_url;
+      // For direct GA4, shareable_url is already the full destination URL with UTM
+      // For server redirect, prepend origin if it starts with /
+      const urlToCopy = link.tracking_type === 'direct_ga4'
+        ? link.shareable_url
+        : (link.shareable_url.startsWith('/')
+            ? `${window.location.origin}${link.shareable_url}`
+            : link.shareable_url);
       await navigator.clipboard.writeText(urlToCopy);
       setCopied(link.id);
       setTimeout(() => setCopied(null), 2000);
@@ -397,7 +401,7 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                     </div>
                     <p className="text-xs text-gray-500">
                       {generatedLink.tracking_type === 'direct_ga4'
-                        ? '✅ Goes directly to destination with UTM parameters'
+                        ? '✅ Direct destination URL with UTM parameters - works independently of your server'
                         : '✅ Short branded URL that routes through your server'}
                     </p>
                   </div>
@@ -745,14 +749,12 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                             </div>
                             <div className="font-mono text-xs text-gray-800 break-all bg-white p-2 rounded border">
                               {link.tracking_type === 'direct_ga4'
-                                ? (link.shareable_url.startsWith('/')
-                                    ? `${window.location.origin}${link.shareable_url}`
-                                    : link.shareable_url)
+                                ? link.shareable_url
                                 : `${window.location.origin}${link.shareable_url}`}
                             </div>
                             <p className="text-xs text-gray-500 mt-1">
                               {link.tracking_type === 'direct_ga4'
-                                ? '✅ Short URL that redirects to destination with UTM parameters'
+                                ? '✅ Direct destination URL with UTM parameters - independent of server'
                                 : '✅ Short branded URL that routes through your server'}
                             </p>
                           </div>

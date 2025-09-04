@@ -70,50 +70,83 @@ class YouTubeDataService:
             raise
     
     def get_channel_videos(self, channel_id: Optional[str] = None, max_results: int = 50) -> List[Dict[str, Any]]:
-        """Get videos from a channel."""
+        """Get videos from a channel with pagination support."""
         try:
             target_channel_id = channel_id or self.youtube_config["channel_id"]
             videos = []
             next_page_token = None
-            
-            while len(videos) < max_results:
+
+            # Set a reasonable upper limit to prevent infinite loops
+            absolute_max = 1000  # YouTube channels rarely have more than this
+            effective_max = min(max_results, absolute_max)
+
+            while len(videos) < effective_max:
+                # Calculate how many videos to request in this batch
+                remaining = effective_max - len(videos)
+                batch_size = min(50, remaining)  # YouTube API max is 50 per request
+
                 # Get video IDs from channel
                 request = self.youtube_service.search().list(
                     part="id",
                     channelId=target_channel_id,
                     type="video",
-                    order="date",
-                    maxResults=min(50, max_results - len(videos)),
+                    order="date",  # Newest first
+                    maxResults=batch_size,
                     pageToken=next_page_token
                 )
                 response = request.execute()
-                
+
                 if not response.get("items"):
+                    logger.info(f"No more videos found. Total collected: {len(videos)}")
                     break
-                
+
                 # Extract video IDs
                 video_ids = [item["id"]["videoId"] for item in response["items"]]
-                
-                # Get detailed video information
-                video_request = self.youtube_service.videos().list(
-                    part="snippet,statistics,status,contentDetails",
-                    id=",".join(video_ids)
-                )
-                video_response = video_request.execute()
-                
-                videos.extend(video_response.get("items", []))
-                
+
+                # Get detailed video information in batches (YouTube API limit is 50 IDs per request)
+                for i in range(0, len(video_ids), 50):
+                    batch_ids = video_ids[i:i+50]
+                    video_request = self.youtube_service.videos().list(
+                        part="snippet,statistics,status,contentDetails",
+                        id=",".join(batch_ids)
+                    )
+                    video_response = video_request.execute()
+                    videos.extend(video_response.get("items", []))
+
                 next_page_token = response.get("nextPageToken")
                 if not next_page_token:
+                    logger.info(f"Reached end of channel videos. Total collected: {len(videos)}")
                     break
-            
-            return videos[:max_results]
-            
+
+            logger.info(f"Successfully fetched {len(videos)} videos from channel {target_channel_id}")
+            return videos[:effective_max]
+
         except HttpError as e:
             logger.error(f"YouTube API error getting channel videos: {e}")
             raise
         except Exception as e:
             logger.error(f"Failed to get channel videos: {e}")
+            raise
+
+    def get_all_channel_videos(self, channel_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get ALL videos from a channel (no limit) for comprehensive sync."""
+        try:
+            target_channel_id = channel_id or self.youtube_config["channel_id"]
+
+            # First, get the total video count from channel info
+            channel_info = self.get_channel_info(target_channel_id)
+            total_videos = int(channel_info.get("statistics", {}).get("videoCount", 0))
+
+            logger.info(f"Channel has {total_videos} total videos. Fetching all...")
+
+            # Fetch all videos with a high limit
+            all_videos = self.get_channel_videos(target_channel_id, max_results=total_videos + 10)
+
+            logger.info(f"Successfully fetched {len(all_videos)} out of {total_videos} total videos")
+            return all_videos
+
+        except Exception as e:
+            logger.error(f"Failed to get all channel videos: {e}")
             raise
     
     def get_video_analytics(self, video_id: str, start_date: datetime, end_date: datetime) -> Dict[str, Any]:

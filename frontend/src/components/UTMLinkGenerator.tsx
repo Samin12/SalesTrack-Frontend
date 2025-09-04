@@ -121,7 +121,14 @@ export const UTMLinkGenerator: React.FC<UTMLinkGeneratorProps> = ({
     if (!generatedLink) return;
 
     try {
-      await navigator.clipboard.writeText(generatedLink.shareable_url);
+      // For direct GA4, shareable_url is already the full destination URL with UTM
+      // For server redirect, prepend origin if needed
+      const urlToCopy = generatedLink.tracking_type === 'direct_ga4'
+        ? generatedLink.shareable_url
+        : (generatedLink.shareable_url.startsWith('/')
+            ? `${window.location.origin}${generatedLink.shareable_url}`
+            : generatedLink.shareable_url);
+      await navigator.clipboard.writeText(urlToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -299,8 +306,15 @@ export const UTMLinkGenerator: React.FC<UTMLinkGeneratorProps> = ({
               <h3 className="text-xl font-semibold text-green-900">🎉 UTM Tracking Link Generated!</h3>
             </div>
             <div className="p-3 bg-gray-50 rounded border break-all text-sm font-mono">
-              {generatedLink.shareable_url}
+              {generatedLink.tracking_type === 'direct_ga4'
+                ? generatedLink.shareable_url
+                : `${window.location.origin}${generatedLink.shareable_url}`}
             </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {generatedLink.tracking_type === 'direct_ga4'
+                ? '✅ Direct destination URL with UTM parameters - works independently of your server'
+                : '✅ Short branded URL that routes through your server'}
+            </p>
             <div className="mt-4 flex gap-2">
               <button
                 onClick={handleCopyLink}

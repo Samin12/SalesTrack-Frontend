@@ -1,7 +1,7 @@
 /**
  * Header component with navigation and user menu
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
@@ -28,7 +28,14 @@ const navigation = [
 
 export default function Header({ className = '' }: HeaderProps) {
   const router = useRouter();
-  const isAuthenticated = apiClient.isAuthenticated();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Check authentication status after component mounts to prevent hydration mismatch
+  useEffect(() => {
+    setIsClient(true);
+    setIsAuthenticated(apiClient.isAuthenticated());
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -104,7 +111,7 @@ export default function Header({ className = '' }: HeaderProps) {
             </button>
 
             {/* Authentication Status */}
-            {isAuthenticated && (
+            {isClient && isAuthenticated && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-lg">
                   <UserCircleIcon className="w-5 h-5 text-gray-400" />

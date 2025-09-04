@@ -69,19 +69,45 @@ class UTMLink(Base):
     def shareable_url(self):
         """Get the URL that should be shared publicly."""
         if self.is_direct_ga4:
-            # For Direct GA4, provide choice: short tracking URL or direct destination URL
-            if self.pretty_slug:
-                # Short tracking URL that redirects to destination with UTM parameters
-                return f"/api/v1/go/{self.pretty_slug}"
-            else:
-                # Fallback to direct destination URL with UTM parameters
-                return self.direct_url or self.tracking_url
+            # For Direct GA4, always return the direct destination URL with UTM parameters
+            # This ensures GA4 tracking works independently of localhost/server
+            return self.direct_url or self.tracking_url
         else:
             # Server redirect links always use short URLs
             if self.pretty_slug:
                 return f"/api/v1/go/{self.pretty_slug}"
             else:
                 return f"/api/v1/r/{self.id}"
+
+    @property
+    def short_url(self):
+        """Get the short URL for server-based tracking (optional for GA4)."""
+        if self.pretty_slug:
+            return f"/api/v1/go/{self.pretty_slug}"
+        else:
+            return f"/api/v1/r/{self.id}"
+
+    @property
+    def display_info(self):
+        """Get display information for frontend."""
+        if self.is_direct_ga4:
+            return {
+                "primary_url": self.direct_url or self.tracking_url,
+                "primary_label": "Direct GA4 URL",
+                "primary_description": "Goes directly to destination with UTM parameters - independent of server",
+                "secondary_url": f"/api/v1/go/{self.pretty_slug}" if self.pretty_slug else f"/api/v1/r/{self.id}",
+                "secondary_label": "Optional Short URL",
+                "secondary_description": "Alternative short URL that redirects through your server"
+            }
+        else:
+            return {
+                "primary_url": f"/api/v1/go/{self.pretty_slug}" if self.pretty_slug else f"/api/v1/r/{self.id}",
+                "primary_label": "Short Redirect URL",
+                "primary_description": "Short branded URL that routes through your server",
+                "secondary_url": None,
+                "secondary_label": None,
+                "secondary_description": None
+            }
 
     def __repr__(self):
         return f"<UTMLink(id={self.id}, video_id={self.video_id}, tracking_type={self.tracking_type}, destination={self.destination_url[:50]}...)>"

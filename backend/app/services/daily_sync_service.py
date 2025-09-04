@@ -14,7 +14,8 @@ from sqlalchemy import desc, and_
 from app.models.daily_sync import DailyYouTubeSync, YouTubeDataSnapshot, SyncConfiguration, SyncMetrics
 from app.models.video import Video
 from app.models.channel import Channel
-from app.services.youtube import YouTubeService
+from app.services.youtube import YouTubeDataService
+from app.services.historical_metrics_service import HistoricalMetricsService
 from app.core.config import get_youtube_config
 from app.database import get_db
 
@@ -26,7 +27,8 @@ class DailySyncService:
     
     def __init__(self, db: Session):
         self.db = db
-        self.youtube_service = YouTubeService()
+        self.youtube_service = YouTubeDataService(db)
+        self.historical_metrics_service = HistoricalMetricsService(db)
         self.config = get_youtube_config()
         
     async def check_sync_needed(self, channel_id: str) -> bool:
@@ -104,22 +106,27 @@ class DailySyncService:
         error_message = None
         
         try:
-            logger.info(f"Starting sync {sync_id} for channel {channel_id}: {reason}")
+            logger.info(f"Starting comprehensive sync {sync_id} for channel {channel_id}: {reason}")
+
+            # Collect historical metrics (this includes channel and video data collection)
+            metrics_result = await self.historical_metrics_service.collect_daily_metrics(channel_id)
+            api_calls_made += 10  # Estimate for metrics collection
+
+            # Fetch ALL videos from YouTube API for complete sync
+            videos_data = self.youtube_service.get_all_channel_videos(channel_id)
+            api_calls_made += len(videos_data) // 50 + 2  # More accurate API call estimation
             
-            # Fetch channel data from YouTube API
-            channel_data = await self.youtube_service.get_channel_overview(channel_id)
-            api_calls_made += 1
-            
-            # Fetch all videos from YouTube API
-            videos_data = await self.youtube_service.get_all_videos(channel_id)
-            api_calls_made += len(videos_data) // 50 + 1  # Estimate API calls for video data
-            
+            # Get channel info for snapshot
+            channel_data = self.youtube_service.get_channel_info(channel_id)
+            statistics = channel_data.get("statistics", {})
+            snippet = channel_data.get("snippet", {})
+
             # Create data snapshot
             snapshot_data = {
                 "channel_id": channel_id,
-                "channel_title": channel_data.get("title", ""),
-                "subscriber_count": channel_data.get("subscriber_count", 0),
-                "view_count": channel_data.get("view_count", 0),
+                "channel_title": snippet.get("title", ""),
+                "subscriber_count": int(statistics.get("subscriberCount", 0)),
+                "view_count": int(statistics.get("viewCount", 0)),
                 "video_count": len(videos_data),
                 "videos": videos_data,
                 "sync_timestamp": datetime.now(timezone.utc)

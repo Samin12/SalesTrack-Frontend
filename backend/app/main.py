@@ -136,12 +136,13 @@ async def startup_event():
     logger.info("Database tables created/verified")
 
     # Start the daily sync scheduler
-    # try:
-    #     from app.services.scheduler_service import start_scheduler
-    #     await start_scheduler()
-    #     logger.info("Daily sync scheduler started")
-    # except Exception as e:
-    #     logger.error(f"Failed to start scheduler: {e}")
+    try:
+        from app.services.scheduler_service import SchedulerService
+        scheduler = SchedulerService()
+        await scheduler.start()
+        logger.info("Daily sync scheduler started")
+    except Exception as e:
+        logger.error(f"Failed to start scheduler: {e}")
 
 
 @app.on_event("shutdown")
@@ -150,12 +151,13 @@ async def shutdown_event():
     logger.info("Shutting down YouTube Analytics API...")
 
     # Stop the daily sync scheduler
-    # try:
-    #     from app.services.scheduler_service import stop_scheduler
-    #     await stop_scheduler()
-    #     logger.info("Daily sync scheduler stopped")
-    # except Exception as e:
-    #     logger.error(f"Error stopping scheduler: {e}")
+    try:
+        from app.services.scheduler_service import SchedulerService
+        scheduler = SchedulerService()
+        await scheduler.stop()
+        logger.info("Daily sync scheduler stopped")
+    except Exception as e:
+        logger.error(f"Error stopping scheduler: {e}")
 
     logger.info("Shutdown complete")
 
