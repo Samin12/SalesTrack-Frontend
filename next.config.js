@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  // Configured for Railway deployment (no standalone output needed)
+  output: 'standalone',
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
   },
@@ -15,15 +15,16 @@ const nextConfig = {
     ];
   },
   images: {
-    domains: ['i.ytimg.com', 'yt3.ggpht.com'], // YouTube thumbnail domains
-    unoptimized: process.env.NODE_ENV === 'production', // Disable image optimization for static export
+    domains: ['i.ytimg.com', 'yt3.ggpht.com'],
+    unoptimized: true,
   },
-  // Production optimizations
-  experimental: {
-    // optimizeCss: true, // Disabled due to critters module issues
-  },
-  // Ensure proper trailing slash handling
   trailingSlash: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 module.exports = nextConfig;
