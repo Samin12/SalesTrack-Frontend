@@ -38,6 +38,15 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
   const [filterBy, setFilterBy] = useState<'all' | 'active' | 'clicked'>('all');
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [isBulkGenerating, setIsBulkGenerating] = useState<boolean>(false);
+  const [showBulkGenerateForm, setShowBulkGenerateForm] = useState<boolean>(false);
+  const [bulkGenerateParams, setBulkGenerateParams] = useState({
+    destinationUrl: '',
+    trackingType: 'direct_posthog' as 'server_redirect' | 'direct_posthog',
+    utmCampaign: '',
+    utmSource: 'youtube',
+    utmMedium: 'video'
+  });
 
   // UTM Generator state
   const [showGenerator, setShowGenerator] = useState<boolean>(false);
@@ -250,6 +259,68 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
       fetchUTMLinks();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete UTM link');
+    }
+  };
+
+  const handleBulkGenerate = async () => {
+    if (!bulkGenerateParams.destinationUrl.trim()) {
+      setError('Destination URL is required for bulk generation');
+      return;
+    }
+
+    setIsBulkGenerating(true);
+    setError('');
+
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-ad878.up.railway.app';
+      const params = new URLSearchParams({
+        destination_url: bulkGenerateParams.destinationUrl,
+        tracking_type: bulkGenerateParams.trackingType,
+        utm_source: bulkGenerateParams.utmSource,
+        utm_medium: bulkGenerateParams.utmMedium,
+      });
+
+      if (bulkGenerateParams.utmCampaign.trim()) {
+        params.append('utm_campaign', bulkGenerateParams.utmCampaign);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/utm/bulk-generate?${params}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to generate UTM links');
+      }
+
+      const result = await response.json();
+
+      // Show success message
+      setError(''); // Clear any previous errors
+      setShowBulkGenerateForm(false);
+
+      // Reset form
+      setBulkGenerateParams({
+        destinationUrl: '',
+        trackingType: 'direct_posthog',
+        utmCampaign: '',
+        utmSource: 'youtube',
+        utmMedium: 'video'
+      });
+
+      // Refresh the UTM links list
+      await fetchUTMLinks();
+
+      // Show success notification
+      alert(`Successfully generated ${result.total_links_generated} UTM links for ${result.total_videos_processed} videos`);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate UTM links');
+    } finally {
+      setIsBulkGenerating(false);
     }
   };
 
@@ -693,57 +764,186 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
       </div>
 
       {/* Bulk Actions */}
-      {totalLinks > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Bulk Actions</h3>
-              <p className="text-sm text-gray-600">Manage all UTM links at once</p>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Bulk Actions</h3>
+            <p className="text-sm text-gray-600">Generate or manage UTM links for all videos at once</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Bulk Generate Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-green-600" />
+              <h4 className="font-medium text-gray-900">Bulk Generate UTM Links</h4>
             </div>
-            <div className="flex items-center gap-3">
-              {showDeleteConfirm ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-red-600 font-medium">
-                    Are you sure? This will delete all {totalLinks} UTM links and {totalClicks} click records.
-                  </span>
+
+            {showBulkGenerateForm ? (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Destination URL *
+                  </label>
+                  <input
+                    type="url"
+                    value={bulkGenerateParams.destinationUrl}
+                    onChange={(e) => setBulkGenerateParams(prev => ({ ...prev, destinationUrl: e.target.value }))}
+                    placeholder="https://example.com/landing-page"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Campaign
+                    </label>
+                    <input
+                      type="text"
+                      value={bulkGenerateParams.utmCampaign}
+                      onChange={(e) => setBulkGenerateParams(prev => ({ ...prev, utmCampaign: e.target.value }))}
+                      placeholder="holiday_2025"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tracking Type
+                    </label>
+                    <select
+                      value={bulkGenerateParams.trackingType}
+                      onChange={(e) => setBulkGenerateParams(prev => ({ ...prev, trackingType: e.target.value as 'server_redirect' | 'direct_posthog' }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="direct_posthog">PostHog (Recommended)</option>
+                      <option value="server_redirect">Server Redirect</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Source
+                    </label>
+                    <input
+                      type="text"
+                      value={bulkGenerateParams.utmSource}
+                      onChange={(e) => setBulkGenerateParams(prev => ({ ...prev, utmSource: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Medium
+                    </label>
+                    <input
+                      type="text"
+                      value={bulkGenerateParams.utmMedium}
+                      onChange={(e) => setBulkGenerateParams(prev => ({ ...prev, utmMedium: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={handleBulkDelete}
-                    disabled={isDeleting}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    onClick={handleBulkGenerate}
+                    disabled={isBulkGenerating || !bulkGenerateParams.destinationUrl.trim()}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {isDeleting ? (
+                    {isBulkGenerating ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Deleting...
+                        Generating...
                       </>
                     ) : (
                       <>
-                        <Trash2 className="w-4 h-4" />
-                        Yes, Delete All
+                        <Plus className="w-4 h-4" />
+                        Generate All Links
                       </>
                     )}
                   </button>
                   <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    disabled={isDeleting}
+                    onClick={() => setShowBulkGenerateForm(false)}
+                    disabled={isBulkGenerating}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
                   >
                     Cancel
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete All UTM Links
-                </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowBulkGenerateForm(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Generate UTM Links for All Videos
+              </button>
+            )}
           </div>
+
+          {/* Bulk Delete Section */}
+          {totalLinks > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-red-600" />
+                <h4 className="font-medium text-gray-900">Bulk Delete UTM Links</h4>
+              </div>
+
+              <p className="text-sm text-gray-600">
+                Currently managing {totalLinks} UTM links with {totalClicks} total clicks
+              </p>
+
+              <div className="flex items-center gap-3">
+                {showDeleteConfirm ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-red-600 font-medium">
+                      Are you sure? This will delete all {totalLinks} UTM links and {totalClicks} click records.
+                    </span>
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={isDeleting}
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4" />
+                          Yes, Delete All
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={isDeleting}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete All UTM Links
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Controls */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
