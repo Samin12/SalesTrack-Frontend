@@ -17,8 +17,8 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Expose port
-EXPOSE 8080
+# Don't expose a specific port - let Railway handle it
+EXPOSE $PORT
 
-# Start the application with explicit port
-CMD ["sh", "-c", "PORT=${PORT:-8080} npm start"]
+# Start the application (Railway will set PORT)
+CMD ["npm", "start"]
