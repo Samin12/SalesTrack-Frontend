@@ -1,85 +1,45 @@
-# YouTube Analytics Dashboard
+# SalesTrack Frontend
 
-A comprehensive YouTube analytics platform with FastAPI backend and Next.js frontend for tracking YouTube channel performance and UTM link management.
+Frontend dashboard for the YouTube Analytics tracking system. Built with Next.js, TypeScript, and Tailwind CSS.
 
-## ✨ Features
+## 🚀 Features
 
-- **Real YouTube Data**: Authentic metrics from YouTube API (no fabricated data)
-- **Weekly Performance Tracking**: Monitor video performance week-over-week
-- **UTM Link Management**: Create and track UTM links for YouTube videos
-- **Google Analytics 4 Integration**: Advanced tracking capabilities
-- **Interactive Dashboard**: Modern React-based UI with real-time data
-- **Google OAuth**: Secure authentication with YouTube API access
+- **📊 Analytics Dashboard** - Real-time YouTube analytics visualization
+- **🔗 UTM Link Management** - Create and track UTM links for videos
+- **📈 Performance Metrics** - Video performance tracking and insights
+- **🌐 Website Analytics** - PostHog integration for website tracking
+- **📱 Responsive Design** - Mobile-first responsive interface
+- **🎨 Modern UI** - Built with Radix UI and Tailwind CSS
 
-## 🏗️ Architecture
+## 🛠️ Tech Stack
 
-### 📊 **Backend Service** (`/backend`)
-- **Technology**: FastAPI (Python)
-- **Features**: YouTube API integration, GA4 tracking, UTM link management, SQLite database
-- **API Documentation**: Available at `http://localhost:8000/docs`
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI
+- **Charts**: Recharts
+- **HTTP Client**: Axios
+- **State Management**: SWR
 
-### 🎨 **Frontend Service** (`/frontend`)
-- **Technology**: Next.js 14 (TypeScript/React)
-- **Features**: Interactive dashboard, analytics visualization, UTM management UI, Tailwind CSS
+## 🚀 Deployment
 
-## 🚀 Quick Start
+### Railway Deployment
 
-### Prerequisites
-- Python 3.9+
-- Node.js 18+
-- Google Cloud Project with YouTube Data API enabled
-- Google OAuth 2.0 credentials
+1. **Connect Repository**: Link this repository to Railway
+2. **Set Environment Variables**:
+   ```bash
+   NEXT_PUBLIC_API_URL=https://your-backend-url.railway.app
+   ```
+3. **Deploy**: Railway will automatically build and deploy
 
-### 1. Backend Setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env  # Configure your environment variables
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
+### Environment Variables
 
-### 2. Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
+- `NEXT_PUBLIC_API_URL`: Backend API URL (required)
 
-### 3. Access the Application
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
+## 🔗 Related Repositories
 
-## 🔧 Environment Configuration
+- **Backend**: [SalesTrack Backend](https://github.com/Samin12/SalesTrack)
 
-### Backend (.env)
-```env
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-YOUTUBE_API_KEY=your_youtube_api_key
-YOUTUBE_CHANNEL_ID=your_channel_id
-SECRET_KEY=your_jwt_secret_key
-```
+## 📄 License
 
-## 📊 Current Status
-
-✅ **Backend**: Fully functional with YouTube API integration
-✅ **Frontend**: Interactive dashboard with real-time data
-✅ **Database**: SQLite with video and analytics data
-✅ **Authentication**: Google OAuth integration
-✅ **UTM Tracking**: Link creation and click tracking
-
-## 🛠️ Recent Fixes
-
-- Fixed duration parsing issues in weekly summary endpoint
-- Resolved data population problems in frontend tables
-- Improved error handling and data validation
-- Enhanced API response formatting
-
-## 📚 Documentation
-
-- **API Documentation**: Available at `http://localhost:8000/docs`
-- **Backend Details**: See `/backend/README.md`
-- **Frontend Details**: See `/frontend/README.md`
+MIT License
