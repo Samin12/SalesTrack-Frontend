@@ -36,6 +36,8 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
   const [testing, setTesting] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'created' | 'clicks' | 'video'>('created');
   const [filterBy, setFilterBy] = useState<'all' | 'active' | 'clicked'>('all');
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
 
   // UTM Generator state
   const [showGenerator, setShowGenerator] = useState<boolean>(false);
@@ -248,6 +250,48 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
       fetchUTMLinks();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete UTM link');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true);
+      return;
+    }
+
+    setIsDeleting(true);
+    setError('');
+
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-ad878.up.railway.app';
+      const response = await fetch(`${API_BASE_URL}/api/v1/utm/bulk-delete?confirm=true`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to delete UTM links');
+      }
+
+      const result = await response.json();
+
+      // Show success message
+      setError(''); // Clear any previous errors
+      setShowDeleteConfirm(false);
+
+      // Refresh the UTM links list
+      await fetchUTMLinks();
+
+      // Show success notification (you could use a toast library here)
+      alert(`Successfully deleted ${result.deleted_links} UTM links and ${result.deleted_clicks} click records`);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete UTM links');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -647,6 +691,59 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
           </div>
         </div>
       </div>
+
+      {/* Bulk Actions */}
+      {totalLinks > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Bulk Actions</h3>
+              <p className="text-sm text-gray-600">Manage all UTM links at once</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {showDeleteConfirm ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-red-600 font-medium">
+                    Are you sure? This will delete all {totalLinks} UTM links and {totalClicks} click records.
+                  </span>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        Yes, Delete All
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleBulkDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete All UTM Links
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
