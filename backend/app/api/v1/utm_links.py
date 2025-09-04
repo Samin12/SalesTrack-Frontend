@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services.utm_service import UTMService
-from app.services.ga4_service import ga4_service
+from app.services.ga4_service import ga4_service  # Keep for migration period
+from app.services.posthog_service import posthog_service
 from app.models.utm_link import UTMLink
 from app.api.v1.utm_schemas import (
     UTMLinkCreate,
@@ -33,9 +34,11 @@ async def create_utm_link(
 ):
     """
     Create a new UTM tracking link for a YouTube video.
-    
+
     This endpoint generates a trackable URL with UTM parameters that can be used
     in video descriptions, comments, or other promotional materials.
+
+    PostHog tracking is recommended for enhanced analytics and privacy-first insights.
     """
     try:
         utm_service = UTMService(db)
@@ -146,9 +149,23 @@ async def record_link_click(
             referrer=referrer
         )
 
-        # Send event to Google Analytics 4 if enabled
+        # Send event to PostHog if enabled
         try:
             utm_link = db.query(UTMLink).filter(UTMLink.id == link_id).first()
+            if utm_link and utm_link.posthog_enabled:
+                await posthog_service.send_utm_click_event(
+                    utm_link=utm_link,
+                    user_agent=user_agent,
+                    ip_address=ip_address,
+                    referrer=referrer
+                )
+        except Exception as posthog_error:
+            # Don't fail the request if PostHog tracking fails
+            from loguru import logger
+            logger.warning(f"PostHog event tracking failed for link {link_id}: {posthog_error}")
+
+        # Legacy GA4 tracking (keeping for migration period)
+        try:
             if utm_link and utm_link.ga4_enabled:
                 await ga4_service.send_utm_click_event(
                     utm_link=utm_link,
@@ -243,7 +260,21 @@ async def redirect_utm_link(
             referrer=request.headers.get("referer")
         )
 
-        # Send event to Google Analytics 4 if enabled
+        # Send event to PostHog if enabled
+        try:
+            if utm_link.posthog_enabled:
+                await posthog_service.send_utm_click_event(
+                    utm_link=utm_link,
+                    user_agent=request.headers.get("user-agent"),
+                    ip_address=request.client.host if request.client else None,
+                    referrer=request.headers.get("referer")
+                )
+        except Exception as posthog_error:
+            # Don't fail the request if PostHog tracking fails
+            from loguru import logger
+            logger.warning(f"PostHog event tracking failed for link {link_id}: {posthog_error}")
+
+        # Legacy GA4 tracking (keeping for migration period)
         try:
             if utm_link.ga4_enabled:
                 await ga4_service.send_utm_click_event(
@@ -306,7 +337,21 @@ async def track_direct_ga4_click(
             referrer=request.headers.get("referer")
         )
 
-        # Send event to Google Analytics 4 if enabled
+        # Send event to PostHog if enabled
+        try:
+            if utm_link.posthog_enabled:
+                await posthog_service.send_utm_click_event(
+                    utm_link=utm_link,
+                    user_agent=request.headers.get("user-agent"),
+                    ip_address=request.client.host if request.client else None,
+                    referrer=request.headers.get("referer")
+                )
+        except Exception as posthog_error:
+            # Don't fail the request if PostHog tracking fails
+            from loguru import logger
+            logger.warning(f"PostHog event tracking failed for link {link_id}: {posthog_error}")
+
+        # Legacy GA4 tracking (keeping for migration period)
         try:
             if utm_link.ga4_enabled:
                 await ga4_service.send_utm_click_event(
@@ -361,7 +406,21 @@ async def redirect_pretty_utm_link(
             referrer=request.headers.get("referer")
         )
 
-        # Send event to Google Analytics 4 if enabled
+        # Send event to PostHog if enabled
+        try:
+            if utm_link.posthog_enabled:
+                await posthog_service.send_utm_click_event(
+                    utm_link=utm_link,
+                    user_agent=request.headers.get("user-agent"),
+                    ip_address=request.client.host if request.client else None,
+                    referrer=request.headers.get("referer")
+                )
+        except Exception as posthog_error:
+            # Don't fail the request if PostHog tracking fails
+            from loguru import logger
+            logger.warning(f"PostHog event tracking failed for link {utm_link.id}: {posthog_error}")
+
+        # Legacy GA4 tracking (keeping for migration period)
         try:
             if utm_link.ga4_enabled:
                 await ga4_service.send_utm_click_event(
@@ -376,8 +435,8 @@ async def redirect_pretty_utm_link(
             logger.warning(f"GA4 event tracking failed for link {utm_link.id}: {ga4_error}")
 
         # Redirect based on tracking type
-        if utm_link.tracking_type == 'direct_ga4':
-            # For Direct GA4, redirect to destination with UTM parameters
+        if utm_link.tracking_type in ['direct_posthog', 'direct_ga4']:
+            # For Direct PostHog/GA4, redirect to destination with UTM parameters
             redirect_url = utm_link.direct_url or utm_link.tracking_url
         else:
             # For Server Redirect, redirect to destination URL

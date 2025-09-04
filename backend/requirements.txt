@@ -19,8 +19,11 @@ google-auth==2.23.4
 google-auth-oauthlib==1.1.0
 google-auth-httplib2==0.1.1
 google-api-python-client==2.108.0
-google-analytics-data==0.18.8  # GA4 Data API
+google-analytics-data==0.18.8  # GA4 Data API (keeping for migration period)
 google-cloud-core==2.4.1  # Core Google Cloud library
+
+# PostHog Analytics
+posthog==3.1.0
 
 # HTTP requests
 httpx==0.25.2

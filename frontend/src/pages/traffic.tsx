@@ -6,6 +6,8 @@ import { VideoTrafficAnalytics } from '../components/VideoTrafficAnalytics';
 import UTMLinksManagement from '../components/UTMLinksManagement';
 import GA4Settings from '../components/GA4/GA4Settings';
 import GA4Analytics from '../components/GA4/GA4Analytics';
+import PostHogSettings from '../components/PostHog/PostHogSettings';
+import PostHogAnalytics from '../components/PostHog/PostHogAnalytics';
 import { Link2, TrendingUp, BarChart3, Database } from 'lucide-react';
 
 interface Video {
@@ -32,7 +34,13 @@ interface UTMLink {
   ga4_users: number;
   ga4_sessions: number;
   ga4_last_sync?: string;
+  posthog_enabled: boolean;
+  posthog_events: number;
+  posthog_users: number;
+  posthog_sessions: number;
+  posthog_last_sync?: string;
   click_count: number;
+  tracking_type: 'server_redirect' | 'direct_ga4' | 'direct_posthog';
 }
 
 // GA4 Analytics Tab Component
@@ -94,13 +102,68 @@ const GA4AnalyticsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger 
   return <GA4Analytics utmLinks={utmLinks} />;
 };
 
+// PostHog Analytics Tab Component
+const PostHogAnalyticsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
+  const [utmLinks, setUtmLinks] = useState<UTMLink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchUTMLinks();
+  }, [refreshTrigger]);
+
+  const fetchUTMLinks = async () => {
+    try {
+      const response = await fetch('/api/v1/utm-links');
+      if (!response.ok) {
+        throw new Error('Failed to fetch UTM links');
+      }
+      const data = await response.json();
+      setUtmLinks(data.utm_links || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch UTM links');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+          <button
+            onClick={fetchUTMLinks}
+            className="mt-2 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <PostHogAnalytics utmLinks={utmLinks} />;
+};
+
 const TrafficPage: React.FC = () => {
   const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState<'utm-links' | 'analytics' | 'ga4-settings' | 'ga4-analytics'>('utm-links');
+  const [activeTab, setActiveTab] = useState<'utm-links' | 'analytics' | 'ga4-settings' | 'ga4-analytics' | 'posthog-settings' | 'posthog-analytics'>('utm-links');
 
   useEffect(() => {
     fetchVideos();
@@ -146,8 +209,8 @@ const TrafficPage: React.FC = () => {
       <Layout>
         <div className="min-h-screen bg-gray-50">
           <Head>
-            <title>Video Traffic Tracking - YouTube Analytics</title>
-            <meta name="description" content="Track video-driven traffic and link performance" />
+            <title>Video Traffic Tracking - PostHog Analytics</title>
+            <meta name="description" content="Track video-driven traffic and link performance with PostHog analytics" />
           </Head>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -173,8 +236,8 @@ const TrafficPage: React.FC = () => {
       <Layout>
         <div className="min-h-screen bg-gray-50">
           <Head>
-            <title>Video Traffic Tracking - YouTube Analytics</title>
-            <meta name="description" content="Track video-driven traffic and link performance" />
+            <title>Video Traffic Tracking - PostHog Analytics</title>
+            <meta name="description" content="Track video-driven traffic and link performance with PostHog analytics" />
           </Head>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -199,8 +262,8 @@ const TrafficPage: React.FC = () => {
     <Layout>
       <div className="min-h-screen bg-gray-50">
         <Head>
-          <title>Video Traffic Tracking - YouTube Analytics</title>
-          <meta name="description" content="Track video-driven traffic and link performance with UTM parameters" />
+          <title>Video Traffic Tracking - PostHog Analytics</title>
+          <meta name="description" content="Track video-driven traffic and link performance with PostHog analytics and UTM parameters" />
         </Head>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -211,8 +274,8 @@ const TrafficPage: React.FC = () => {
               <h1 className="text-3xl font-bold text-gray-900">Video Traffic Tracking</h1>
             </div>
             <p className="text-gray-600 max-w-3xl">
-              Generate UTM tracking links for your YouTube videos and analyze how your content drives traffic to external destinations.
-              Track click-through rates, conversion metrics, and identify your most effective videos for driving traffic.
+              Generate UTM tracking links for your YouTube videos with PostHog analytics and analyze how your content drives traffic to external destinations.
+              Track click-through rates, conversion metrics, user journeys, and identify your most effective videos for driving traffic.
             </p>
           </div>
 
@@ -247,6 +310,32 @@ const TrafficPage: React.FC = () => {
                   </div>
                 </button>
                 <button
+                  onClick={() => setActiveTab('posthog-settings')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'posthog-settings'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4" />
+                    PostHog Settings
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('posthog-analytics')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'posthog-analytics'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    PostHog Analytics
+                  </div>
+                </button>
+                <button
                   onClick={() => setActiveTab('ga4-settings')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'ga4-settings'
@@ -256,7 +345,7 @@ const TrafficPage: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <Database className="w-4 h-4" />
-                    GA4 Settings
+                    GA4 Settings (Legacy)
                   </div>
                 </button>
                 <button
@@ -269,7 +358,7 @@ const TrafficPage: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
-                    GA4 Analytics
+                    GA4 Analytics (Legacy)
                   </div>
                 </button>
               </nav>
@@ -294,6 +383,14 @@ const TrafficPage: React.FC = () => {
 
           {activeTab === 'ga4-analytics' && (
             <GA4AnalyticsTab refreshTrigger={refreshTrigger} />
+          )}
+
+          {activeTab === 'posthog-settings' && (
+            <PostHogSettings />
+          )}
+
+          {activeTab === 'posthog-analytics' && (
+            <PostHogAnalyticsTab refreshTrigger={refreshTrigger} />
           )}
 
           {/* Footer Info */}

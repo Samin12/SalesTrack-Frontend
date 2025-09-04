@@ -99,9 +99,9 @@ class UTMService:
         # Generate tracking URL (always generated for backward compatibility)
         tracking_url = self._build_tracking_url(destination_url, utm_params)
 
-        # Generate direct URL for GA4-only tracking
-        # For direct GA4, this should always be the destination URL with UTM parameters
-        direct_url = tracking_url if tracking_type == "direct_ga4" else None
+        # Generate direct URL for PostHog/GA4-only tracking
+        # For direct PostHog/GA4, this should always be the destination URL with UTM parameters
+        direct_url = tracking_url if tracking_type in ["direct_posthog", "direct_ga4"] else None
 
         # Generate pretty slug for both tracking types (for short URLs)
         base_slug = self._generate_pretty_slug(destination_url, video_id)

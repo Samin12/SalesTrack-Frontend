@@ -49,6 +49,8 @@ app.add_exception_handler(ValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Configure CORS
+print(f"DEBUG: CORS origins: {settings.cors_origins}")
+print(f"DEBUG: Environment: {settings.ENVIRONMENT}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -137,9 +139,8 @@ async def startup_event():
 
     # Start the daily sync scheduler
     try:
-        from app.services.scheduler_service import SchedulerService
-        scheduler = SchedulerService()
-        await scheduler.start()
+        from app.services.scheduler_service import start_scheduler
+        await start_scheduler()
         logger.info("Daily sync scheduler started")
     except Exception as e:
         logger.error(f"Failed to start scheduler: {e}")
@@ -152,9 +153,8 @@ async def shutdown_event():
 
     # Stop the daily sync scheduler
     try:
-        from app.services.scheduler_service import SchedulerService
-        scheduler = SchedulerService()
-        await scheduler.stop()
+        from app.services.scheduler_service import stop_scheduler
+        await stop_scheduler()
         logger.info("Daily sync scheduler stopped")
     except Exception as e:
         logger.error(f"Error stopping scheduler: {e}")

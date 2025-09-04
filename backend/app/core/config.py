@@ -35,16 +35,24 @@ class Settings(BaseSettings):
     YOUTUBE_API_KEY: str
     YOUTUBE_CHANNEL_ID: str
     YOUTUBE_CHANNEL_HANDLE: str = "@SaminYasar_"
+
+    # YouTube OAuth Configuration (for Analytics API)
+    YOUTUBE_OAUTH_CONFIG: Optional[str] = None  # JSON string of OAuth config
     
     # ScrapeCreators API Configuration
     SCRAPECREATORS_API_KEY: str = "wHAmZcysPNY6yDhX0impv2Lv5dg1"
     SCRAPECREATORS_BASE_URL: str = "https://api.scrapecreators.com"
 
-    # Google Analytics 4 Configuration
+    # Google Analytics 4 Configuration (keeping for migration period)
     GA4_PROPERTY_ID: Optional[str] = None
     GA4_MEASUREMENT_ID: Optional[str] = None
     GA4_API_SECRET: Optional[str] = None
     GA4_SERVICE_ACCOUNT_PATH: Optional[str] = None
+
+    # PostHog Analytics Configuration
+    POSTHOG_API_KEY: Optional[str] = None
+    POSTHOG_HOST: str = "https://us.posthog.com"
+    POSTHOG_PROJECT_ID: Optional[str] = None
     
     # JWT Configuration
     SECRET_KEY: str
@@ -55,7 +63,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # CORS Configuration
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:8080"]
+    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:8080"]
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v):
@@ -151,6 +159,16 @@ def get_ga4_config() -> dict:
         "measurement_id": settings.GA4_MEASUREMENT_ID,
         "api_secret": settings.GA4_API_SECRET,
         "service_account_path": settings.GA4_SERVICE_ACCOUNT_PATH
+    }
+
+
+# PostHog Analytics configuration
+def get_posthog_config() -> dict:
+    """Get PostHog Analytics configuration."""
+    return {
+        "api_key": settings.POSTHOG_API_KEY,
+        "host": settings.POSTHOG_HOST,
+        "project_id": settings.POSTHOG_PROJECT_ID
     }
 
 

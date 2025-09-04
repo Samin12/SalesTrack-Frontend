@@ -11,6 +11,8 @@ import pandas as pd
 from app.models.channel import Channel, ChannelMetrics
 from app.models.video import Video, VideoMetrics
 from app.models.traffic import WebsiteTraffic, ConversionEvent
+from app.models.utm_link import UTMLink, LinkClick
+from app.services.posthog_service import posthog_service
 
 
 class AnalyticsProcessor:
@@ -352,3 +354,90 @@ class AnalyticsProcessor:
             return "average"
         else:
             return "needs_improvement"
+
+    async def analyze_posthog_utm_performance(self, days: int = 30) -> Dict[str, Any]:
+        """Analyze UTM link performance using PostHog data."""
+        try:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+
+            # Get UTM links with PostHog data
+            utm_links = self.db.query(UTMLink).filter(
+                UTMLink.posthog_enabled == True,
+                UTMLink.created_at >= start_date
+            ).all()
+
+            if not utm_links:
+                return {"error": "No PostHog-enabled UTM links found"}
+
+            # Fetch fresh PostHog analytics data
+            posthog_data = await posthog_service.fetch_utm_analytics(start_date, end_date)
+
+            # Combine local and PostHog data
+            performance_data = []
+            for link in utm_links:
+                # Find corresponding PostHog data
+                posthog_metrics = next(
+                    (item for item in posthog_data if item.get("link_id") == str(link.id)),
+                    {}
+                )
+
+                # Get local click data
+                local_clicks = self.db.query(LinkClick).filter(
+                    LinkClick.utm_link_id == link.id,
+                    LinkClick.clicked_at >= start_date
+                ).count()
+
+                performance_data.append({
+                    "link_id": link.id,
+                    "video_id": link.video_id,
+                    "utm_campaign": link.utm_campaign,
+                    "utm_source": link.utm_source,
+                    "utm_medium": link.utm_medium,
+                    "local_clicks": local_clicks,
+                    "posthog_events": posthog_metrics.get("event_count", 0),
+                    "posthog_users": posthog_metrics.get("total_users", 0),
+                    "posthog_sessions": posthog_metrics.get("sessions", 0),
+                    "created_at": link.created_at.isoformat()
+                })
+
+            # Calculate summary metrics
+            total_local_clicks = sum(item["local_clicks"] for item in performance_data)
+            total_posthog_events = sum(item["posthog_events"] for item in performance_data)
+            total_posthog_users = sum(item["posthog_users"] for item in performance_data)
+
+            # Find top performing campaigns
+            campaign_performance = {}
+            for item in performance_data:
+                campaign = item["utm_campaign"]
+                if campaign not in campaign_performance:
+                    campaign_performance[campaign] = {
+                        "local_clicks": 0,
+                        "posthog_events": 0,
+                        "posthog_users": 0
+                    }
+                campaign_performance[campaign]["local_clicks"] += item["local_clicks"]
+                campaign_performance[campaign]["posthog_events"] += item["posthog_events"]
+                campaign_performance[campaign]["posthog_users"] += item["posthog_users"]
+
+            # Sort campaigns by performance
+            top_campaigns = sorted(
+                campaign_performance.items(),
+                key=lambda x: x[1]["posthog_events"],
+                reverse=True
+            )[:5]
+
+            return {
+                "analysis_period_days": days,
+                "total_utm_links": len(utm_links),
+                "total_local_clicks": total_local_clicks,
+                "total_posthog_events": total_posthog_events,
+                "total_posthog_users": total_posthog_users,
+                "average_events_per_link": total_posthog_events / len(utm_links) if utm_links else 0,
+                "top_campaigns": [{"campaign": camp[0], **camp[1]} for camp in top_campaigns],
+                "link_performance": performance_data
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to analyze PostHog UTM performance: {e}")
+            return {"error": str(e)}

@@ -286,11 +286,11 @@
   
   /* Glow effects */
   .glow-primary {
-    box-shadow: 0 0 20px rgba(240, 84, 255, 0.3);
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
   }
-  
+
   .glow-primary-lg {
-    box-shadow: 0 0 40px rgba(240, 84, 255, 0.4);
+    box-shadow: 0 0 40px rgba(220, 38, 38, 0.4);
   }
 }
 

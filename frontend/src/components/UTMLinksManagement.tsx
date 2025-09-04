@@ -7,7 +7,7 @@ interface UTMLink {
   destination_url: string;
   tracking_url: string;
   pretty_slug?: string;
-  tracking_type: 'server_redirect' | 'direct_ga4';
+  tracking_type: 'server_redirect' | 'direct_ga4' | 'direct_posthog';
   direct_url?: string;
   shareable_url: string;
   utm_campaign: string;
@@ -44,7 +44,7 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
   const [destinationUrl, setDestinationUrl] = useState<string>('');
   const [utmContent, setUtmContent] = useState<string>('');
   const [utmTerm, setUtmTerm] = useState<string>('');
-  const [trackingType, setTrackingType] = useState<'server_redirect' | 'direct_ga4'>('direct_ga4');
+  const [trackingType, setTrackingType] = useState<'server_redirect' | 'direct_ga4' | 'direct_posthog'>('direct_posthog');
   const [generatedLink, setGeneratedLink] = useState<UTMLink | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatorCopied, setGeneratorCopied] = useState<boolean>(false);
@@ -392,16 +392,22 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-gray-700">
-                      {generatedLink.tracking_type === 'direct_ga4' ? '🎯 Short Clean URL:' : '🔄 Short Redirect URL:'}
+                      {generatedLink.tracking_type === 'direct_ga4'
+                        ? '🎯 Short GA4 URL:'
+                        : generatedLink.tracking_type === 'direct_posthog'
+                        ? '🚀 PostHog Direct URL:'
+                        : '🔄 Short Redirect URL:'}
                     </p>
                     <div className="p-3 bg-white rounded border break-all text-sm font-mono">
-                      {generatedLink.tracking_type === 'direct_ga4'
+                      {generatedLink.tracking_type === 'direct_ga4' || generatedLink.tracking_type === 'direct_posthog'
                         ? generatedLink.shareable_url
                         : `${window.location.origin}${generatedLink.shareable_url}`}
                     </div>
                     <p className="text-xs text-gray-500">
                       {generatedLink.tracking_type === 'direct_ga4'
                         ? '✅ Direct destination URL with UTM parameters - works independently of your server'
+                        : generatedLink.tracking_type === 'direct_posthog'
+                        ? '✅ Direct destination URL with UTM parameters - tracked by PostHog'
                         : '✅ Short branded URL that routes through your server'}
                     </p>
                   </div>
@@ -502,6 +508,28 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                 🎯 Choose Your Tracking Method
               </label>
               <div className="space-y-4">
+                <div className="flex items-start space-x-3 p-3 bg-white rounded-lg border-2 border-purple-200 hover:border-purple-300 transition-colors">
+                  <input
+                    id="direct-posthog-mgmt"
+                    type="radio"
+                    name="tracking-type-mgmt"
+                    value="direct_posthog"
+                    checked={trackingType === 'direct_posthog'}
+                    onChange={(e) => setTrackingType(e.target.value as 'direct_posthog' | 'direct_ga4' | 'server_redirect')}
+                    className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="direct-posthog-mgmt" className="text-sm font-bold text-purple-800 cursor-pointer flex items-center gap-2">
+                      🚀 PostHog Analytics <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">RECOMMENDED</span>
+                    </label>
+                    <p className="text-xs text-purple-700 mt-1 font-medium">
+                      ✅ Privacy-first analytics • ✅ Advanced user journeys • ✅ Real-time insights
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Creates: https://yourdestination.com?utm_source=youtube&utm_medium=video...
+                    </p>
+                  </div>
+                </div>
                 <div className="flex items-start space-x-3 p-3 bg-white rounded-lg border-2 border-green-200 hover:border-green-300 transition-colors">
                   <input
                     id="direct-ga4-mgmt"
@@ -509,15 +537,15 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                     name="tracking-type-mgmt"
                     value="direct_ga4"
                     checked={trackingType === 'direct_ga4'}
-                    onChange={(e) => setTrackingType(e.target.value as 'direct_ga4')}
+                    onChange={(e) => setTrackingType(e.target.value as 'direct_posthog' | 'direct_ga4' | 'server_redirect')}
                     className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
                   />
                   <div className="flex-1">
                     <label htmlFor="direct-ga4-mgmt" className="text-sm font-bold text-green-800 cursor-pointer flex items-center gap-2">
-                      🎯 Direct GA4 Tracking <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">RECOMMENDED</span>
+                      📊 Google Analytics <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">LEGACY</span>
                     </label>
                     <p className="text-xs text-green-700 mt-1 font-medium">
-                      ✅ Clean URLs perfect for YouTube • ✅ Faster loading • ✅ Better user experience
+                      ✅ Traditional GA4 tracking • ✅ Backward compatibility • ✅ Familiar interface
                     </p>
                     <p className="text-xs text-gray-600 mt-1">
                       Creates: https://yourdestination.com?utm_source=youtube&utm_medium=video...
@@ -531,15 +559,15 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                     name="tracking-type-mgmt"
                     value="server_redirect"
                     checked={trackingType === 'server_redirect'}
-                    onChange={(e) => setTrackingType(e.target.value as 'server_redirect')}
+                    onChange={(e) => setTrackingType(e.target.value as 'direct_posthog' | 'direct_ga4' | 'server_redirect')}
                     className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
                   <div className="flex-1">
                     <label htmlFor="server-redirect-mgmt" className="text-sm font-bold text-blue-800 cursor-pointer flex items-center gap-2">
-                      🔄 Server Redirect Tracking <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">ADVANCED</span>
+                      🔄 Server + PostHog Tracking <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">ADVANCED</span>
                     </label>
                     <p className="text-xs text-blue-700 mt-1 font-medium">
-                      ✅ Detailed analytics • ✅ A/B testing • ✅ Complete data control
+                      ✅ Server analytics + PostHog • ✅ A/B testing • ✅ Complete data control
                     </p>
                     <p className="text-xs text-gray-600 mt-1">
                       Creates: https://yourdomain.com/api/v1/go/your-pretty-link
@@ -702,16 +730,28 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                           <span className={`px-3 py-2 rounded-lg text-sm font-bold border-2 ${
                             link.tracking_type === 'direct_ga4'
                               ? 'bg-green-50 text-green-800 border-green-200'
+                              : link.tracking_type === 'direct_posthog'
+                              ? 'bg-purple-50 text-purple-800 border-purple-200'
                               : 'bg-blue-50 text-blue-800 border-blue-200'
                           }`}>
-                            {link.tracking_type === 'direct_ga4' ? '🎯 DIRECT GA4 TRACKING' : '🔄 SERVER REDIRECT TRACKING'}
+                            {link.tracking_type === 'direct_ga4'
+                              ? '🎯 DIRECT GA4 TRACKING'
+                              : link.tracking_type === 'direct_posthog'
+                              ? '🚀 DIRECT POSTHOG TRACKING'
+                              : '🔄 SERVER REDIRECT TRACKING'}
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             link.tracking_type === 'direct_ga4'
                               ? 'bg-green-100 text-green-700'
+                              : link.tracking_type === 'direct_posthog'
+                              ? 'bg-purple-100 text-purple-700'
                               : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {link.tracking_type === 'direct_ga4' ? 'RECOMMENDED' : 'ADVANCED'}
+                            {link.tracking_type === 'direct_ga4'
+                              ? 'LEGACY'
+                              : link.tracking_type === 'direct_posthog'
+                              ? 'RECOMMENDED'
+                              : 'ADVANCED'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -741,20 +781,26 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                           <div className="bg-gray-50 p-3 rounded-lg border">
                             <div className="flex items-center justify-between mb-1">
                               <p className="text-xs font-medium text-gray-700">
-                                {link.tracking_type === 'direct_ga4' ? '🎯 Short GA4 URL:' : '🔄 Short Redirect URL:'}
+                                {link.tracking_type === 'direct_ga4'
+                                  ? '🎯 Short GA4 URL:'
+                                  : link.tracking_type === 'direct_posthog'
+                                  ? '🚀 PostHog Direct URL:'
+                                  : '🔄 Short Redirect URL:'}
                               </p>
                               <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
                                 SHORT
                               </span>
                             </div>
                             <div className="font-mono text-xs text-gray-800 break-all bg-white p-2 rounded border">
-                              {link.tracking_type === 'direct_ga4'
+                              {link.tracking_type === 'direct_ga4' || link.tracking_type === 'direct_posthog'
                                 ? link.shareable_url
                                 : `${window.location.origin}${link.shareable_url}`}
                             </div>
                             <p className="text-xs text-gray-500 mt-1">
                               {link.tracking_type === 'direct_ga4'
                                 ? '✅ Direct destination URL with UTM parameters - independent of server'
+                                : link.tracking_type === 'direct_posthog'
+                                ? '✅ Direct destination URL with UTM parameters - tracked by PostHog'
                                 : '✅ Short branded URL that routes through your server'}
                             </p>
                           </div>

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_
 
-from app.database import get_db
+from app.core.database import get_db
 from app.core.config import get_youtube_config
 from app.models.daily_sync import DailyYouTubeSync, YouTubeDataSnapshot, SyncConfiguration
 from app.services.daily_sync_service import DailySyncService

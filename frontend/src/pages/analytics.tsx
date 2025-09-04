@@ -20,14 +20,27 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface AnalyticsData {
+  status: string;
+  youtube_data: {
+    channel_title: string;
+    total_subscribers: number;
+    total_views: number;
+    total_videos: number;
+    youtube_views_this_week: number;
+    youtube_growth_percentage: number;
+    videos_published_this_week: number;
+    average_views_per_video: number;
+  };
+  growth_data: {
+    estimated_growth_percentage: number;
+    recent_average_views: number;
+    older_average_views: number;
+  };
   videos: CombinedVideoAnalytics[];
-  totalViews: number;
-  totalClicks: number;
-  averageCTR: number;
-  weeklyGrowth: {
-    views: number;
-    clicks: number;
-    ctr: number;
+  utm_data: {
+    total_clicks: number;
+    total_links: number;
+    average_ctr: number;
   };
 }
 
@@ -44,7 +57,7 @@ const Analytics: NextPage = () => {
     setLoading({ isLoading: true });
     try {
       // Fetch combined analytics data
-      const response = await fetch(`/api/v1/analytics/combined?period=${selectedPeriod}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/analytics/combined?period=${selectedPeriod}`);
       if (response.ok) {
         const data = await response.json();
         setAnalyticsData(data);
@@ -207,28 +220,27 @@ const Analytics: NextPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <MetricCard
                 title="Total Views"
-                value={formatNumber(analyticsData.totalViews)}
-                change={analyticsData.weeklyGrowth.views}
-                changeLabel="this week"
+                value={formatNumber(analyticsData.youtube_data.total_views)}
+                change={analyticsData.growth_data.estimated_growth_percentage}
+                changeLabel="growth estimate"
                 icon={EyeIcon}
               />
               <MetricCard
                 title="Total Clicks"
-                value={formatNumber(analyticsData.totalClicks)}
-                change={analyticsData.weeklyGrowth.clicks}
-                changeLabel="this week"
+                value={formatNumber(analyticsData.utm_data.total_clicks)}
+                changeLabel="from UTM links"
                 icon={CursorArrowRaysIcon}
               />
               <MetricCard
-                title="Average CTR"
-                value={`${((analyticsData.averageCTR || 0) * 100).toFixed(2)}%`}
-                change={analyticsData.weeklyGrowth.ctr}
-                changeLabel="this week"
+                title="Subscribers"
+                value={formatNumber(analyticsData.youtube_data.total_subscribers)}
+                changeLabel="total"
                 icon={ChartBarIcon}
               />
               <MetricCard
-                title="Active Videos"
-                value={analyticsData.videos.length.toString()}
+                title="Videos"
+                value={analyticsData.youtube_data.total_videos.toString()}
+                changeLabel="published"
                 icon={ArrowTrendingUpIcon}
               />
             </div>

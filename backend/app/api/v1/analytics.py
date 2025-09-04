@@ -1165,72 +1165,65 @@ async def get_combined_analytics(
     db: Session = Depends(get_db)
 ):
     """
-    Get combined analytics data including video performance and UTM tracking.
+    Get combined analytics data using YouTube Data API v3 - no OAuth required.
     """
     try:
         # Parse period
         days_map = {"7d": 7, "30d": 30, "90d": 90}
         days = days_map.get(period, 30)
 
-        start_date = datetime.now() - timedelta(days=days)
+        # Use YouTube Data API service for real data
+        from app.services.youtube_data_api import YouTubeDataAPIService
+        youtube_service = YouTubeDataAPIService()
 
-        # Get YouTube config
-        youtube_config = get_youtube_config()
-        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
-
-        # Get videos from database
-        videos = db.query(Video).filter(
-            Video.channel_id == channel_id,
-            Video.is_active == True
-        ).order_by(desc(Video.view_count)).all()
+        # Get comprehensive YouTube data
+        channel_stats = youtube_service.get_channel_statistics()
+        growth_data = youtube_service.get_channel_growth_estimate(days_back=days)
+        recent_videos = youtube_service.get_recent_videos(max_results=10)
 
         # Get UTM links and click data from database
         utm_links = db.query(UTMLink).all()
-
-        # Get click counts for all UTM links
         utm_click_counts = {}
         for link in utm_links:
             click_count = db.query(LinkClick).filter(LinkClick.utm_link_id == link.id).count()
             utm_click_counts[link.id] = click_count
 
-        # Combine data for each video
+        # Combine YouTube Data API results with UTM data
         combined_videos = []
-        total_views = 0
-        total_clicks = 0
+        total_views = channel_stats['total_view_count']
+        total_clicks = sum(utm_click_counts.values())
 
-        for video in videos:
-            video_id = video.video_id
+        # Process recent videos from YouTube Data API
+        for video in recent_videos:
+            video_id = video['video_id']
 
             # Get UTM links for this video
             video_utm_links = [link for link in utm_links if link.video_id == video_id]
-
-            # Calculate total clicks for this video
             video_clicks = sum(utm_click_counts.get(link.id, 0) for link in video_utm_links)
 
             # Calculate CTR (clicks / views)
-            views = video.view_count
+            views = video['view_count']
             ctr = (video_clicks / views) if views > 0 else 0
-
-            # No growth data available without historical tracking
 
             combined_video = {
                 "video_info": {
                     "video_id": video_id,
-                    "title": video.title,
-                    "published_at": video.published_at.isoformat() if video.published_at else "",
+                    "title": video['title'],
+                    "published_at": video['published_at'],
                     "view_count": views,
-                    "like_count": video.like_count,
-                    "comment_count": video.comment_count,
-                    "duration_seconds": video.duration_seconds or 0
+                    "like_count": video['like_count'],
+                    "comment_count": video['comment_count'],
+                    "duration": video['duration'],
+                    "thumbnail_url": video['thumbnail_url']
                 },
                 "video_metrics": {
-                    "date": datetime.now().isoformat(),
+                    "date": video['updated_at'],
                     "view_count": views,
                     "view_growth": None,  # Not available without historical data
                     "view_growth_rate": None,  # Not available without historical data
-                    "like_count": video.like_count,
-                    "comment_count": video.comment_count,
-                    "engagement_rate": calculate_engagement_rate(video)
+                    "like_count": video['like_count'],
+                    "comment_count": video['comment_count'],
+                    "engagement_rate": round(((video['like_count'] + video['comment_count']) / max(views, 1)) * 100, 2)
                 },
                 "utm_links": [
                     {
@@ -1259,33 +1252,108 @@ async def get_combined_analytics(
             }
 
             combined_videos.append(combined_video)
-            total_views += views
-            total_clicks += video_clicks
 
         # Calculate overall metrics
         average_ctr = (total_clicks / total_views) if total_views > 0 else 0
 
-        # No weekly growth data available without historical tracking
-        weekly_growth = {
-            "views": None,  # Not available without historical data
-            "clicks": None,  # Not available without historical data
-            "ctr": None  # Not available without historical data
-        }
+        # Calculate this week's views from recent videos
+        from datetime import datetime, timedelta, timezone
+        week_ago = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=7)
 
+        this_week_views = 0
+        this_week_videos = 0
+
+        for video in recent_videos:
+            published_date = datetime.fromisoformat(video['published_at'].replace('Z', '+00:00'))
+            if published_date >= week_ago:
+                this_week_views += video['view_count']
+                this_week_videos += 1
+
+        # Format response with real YouTube data
         return {
             "status": "success",
             "timestamp": datetime.now().isoformat(),
             "period": period,
+            "data_source": "YouTube Data API v3",
+            "youtube_data": {
+                "channel_title": channel_stats['channel_title'],
+                "total_subscribers": channel_stats['subscriber_count'],
+                "total_views": channel_stats['total_view_count'],
+                "total_videos": channel_stats['video_count'],
+                "youtube_views_this_week": this_week_views,
+                "youtube_growth_percentage": growth_data['estimated_growth_percentage'],
+                "videos_published_this_week": this_week_videos,
+                "average_views_per_video": growth_data['recent_average_views']
+            },
+            "growth_data": growth_data,
             "videos": combined_videos,
-            "totalViews": total_views,
-            "totalClicks": total_clicks,
-            "averageCTR": average_ctr,
-            "weeklyGrowth": weekly_growth
+            "utm_data": {
+                "total_clicks": total_clicks,
+                "total_links": len(utm_links),
+                "average_ctr": average_ctr
+            },
+            "last_updated": datetime.utcnow().isoformat()
         }
 
     except Exception as e:
         logger.error(f"Error in combined analytics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dashboard-data")
+async def get_dashboard_data():
+    """Get dashboard data using YouTube Data API v3 - optimized for frontend."""
+    try:
+        # Use YouTube Data API service for real data
+        from app.services.youtube_data_api import YouTubeDataAPIService
+        youtube_service = YouTubeDataAPIService()
+
+        # Get channel statistics
+        channel_stats = youtube_service.get_channel_statistics()
+
+        # Get recent videos
+        recent_videos = youtube_service.get_recent_videos(max_results=5)
+
+        # Get growth estimate
+        growth_data = youtube_service.get_channel_growth_estimate(days_back=7)
+
+        # Calculate this week's views from recent videos
+        from datetime import datetime, timedelta, timezone
+        week_ago = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=7)
+
+        this_week_views = 0
+        this_week_videos = 0
+
+        for video in recent_videos:
+            published_date = datetime.fromisoformat(video['published_at'].replace('Z', '+00:00'))
+            if published_date >= week_ago:
+                this_week_views += video['view_count']
+                this_week_videos += 1
+
+        # Format for frontend
+        formatted_data = {
+            "youtube_views_this_week": this_week_views,
+            "youtube_growth_percentage": growth_data['estimated_growth_percentage'],
+            "total_subscribers": channel_stats['subscriber_count'],
+            "total_views": channel_stats['total_view_count'],
+            "total_videos": channel_stats['video_count'],
+            "videos_published_this_week": this_week_videos,
+            "channel_title": channel_stats['channel_title'],
+            "recent_videos": recent_videos[:3],  # Top 3 recent videos
+            "average_views_per_video": growth_data['recent_average_views'],
+            "growth_estimate": growth_data,
+            "last_updated": datetime.utcnow().isoformat()
+        }
+
+        return {
+            "status": "success",
+            "data": formatted_data,
+            "data_source": "YouTube Data API v3"
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting dashboard data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get dashboard data: {str(e)}")
 
 
 
@@ -1302,3 +1370,684 @@ def calculate_engagement_rate(video) -> float:
 
     engagement = (likes + comments) / views
     return round(engagement * 100, 2)  # Return as percentage
+
+
+@router.get("/website")
+async def get_website_analytics(
+    days: int = Query(7, description="Number of days to fetch website analytics for"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get website analytics from PostHog for the specified number of days.
+    Shows page views, unique visitors, and daily trends.
+    """
+    try:
+        from app.services.posthog_service import posthog_service
+
+        # Fetch website analytics from PostHog
+        website_data = await posthog_service.get_website_analytics(days=days)
+
+        return {
+            "status": "success",
+            "timestamp": datetime.now().isoformat(),
+            "period_days": days,
+            "website_analytics": website_data
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching website analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch website analytics: {str(e)}")
+
+
+@router.get("/combined-metrics")
+async def get_combined_youtube_website_metrics(
+    days: int = Query(7, description="Number of days for comparison"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get combined YouTube and website metrics for side-by-side comparison.
+    Shows YouTube views vs website visits over the specified period.
+    """
+    try:
+        from app.services.posthog_service import posthog_service
+
+        # Get YouTube config
+        youtube_config = get_youtube_config()
+        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
+
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        # Get YouTube metrics (simplified for daily comparison)
+        youtube_daily_views = []
+        total_youtube_views = 0
+
+        # For now, we'll use a simplified approach since we don't have historical YouTube data
+        # In a real implementation, you'd fetch daily YouTube analytics
+        videos = db.query(Video).filter(
+            Video.channel_id == channel_id,
+            Video.is_active == True
+        ).all()
+
+        # Calculate total views (this is lifetime, not daily)
+        for video in videos:
+            total_youtube_views += video.view_count or 0
+
+        # Create mock daily data for demonstration (in production, use YouTube Analytics API)
+        for i in range(days):
+            date = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
+            youtube_daily_views.append({
+                "date": date,
+                "views": 0  # Would be actual daily views from YouTube Analytics API
+            })
+
+        # Get website analytics from PostHog
+        website_data = await posthog_service.get_website_analytics(days=days)
+
+        # Combine the data
+        combined_daily = []
+        website_daily = {item["date"]: item["visits"] for item in website_data.get("daily_visits", [])}
+
+        for youtube_day in youtube_daily_views:
+            date = youtube_day["date"]
+            combined_daily.append({
+                "date": date,
+                "youtube_views": youtube_day["views"],
+                "website_visits": website_daily.get(date, 0)
+            })
+
+        return {
+            "status": "success",
+            "timestamp": datetime.now().isoformat(),
+            "period_days": days,
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "summary": {
+                "total_youtube_views_lifetime": total_youtube_views,
+                "total_website_visits": website_data.get("total_visits", 0),
+                "unique_website_visitors": website_data.get("unique_visitors", 0),
+                "youtube_videos_count": len(videos)
+            },
+            "daily_comparison": combined_daily,
+            "website_top_pages": website_data.get("top_pages", []),
+            "note": "YouTube daily views require YouTube Analytics API historical data collection"
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching combined metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch combined metrics: {str(e)}")
+
+
+@router.get("/weekly-performance")
+async def get_weekly_performance(db: Session = Depends(get_db)):
+    """Get comprehensive weekly performance data including YouTube, UTM, and website analytics"""
+    try:
+        # Get current week boundaries (Sunday to Saturday)
+        today = datetime.now()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start = today - timedelta(days=days_since_sunday)
+        week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_end = week_start + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+        # Previous week for comparison
+        prev_week_start = week_start - timedelta(days=7)
+        prev_week_end = week_start - timedelta(seconds=1)
+
+        logger.info(f"Getting weekly performance data for {week_start} to {week_end}")
+
+        # Initialize response data
+        performance_data = {
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "youtube_views_this_week": 0,
+            "youtube_growth_percentage": 0.0,
+            "utm_clicks_this_week": 0,
+            "utm_growth_percentage": 0.0,
+            "website_visits_this_week": 0,
+            "website_growth_percentage": 0.0,
+            "unique_visitors_this_week": 0,
+            "total_videos": 0,
+            "active_utm_links": 0,
+            "top_video_this_week": "N/A",
+            "top_utm_link_this_week": "N/A",
+            "top_website_page_this_week": "N/A"
+        }
+
+        # Get YouTube config
+        youtube_config = get_youtube_config()
+        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
+
+        # Get YouTube data from database
+        try:
+            # Get total videos count
+            videos = db.query(Video).filter(
+                Video.channel_id == channel_id,
+                Video.is_active == True
+            ).all()
+            performance_data["total_videos"] = len(videos)
+
+            # Since we don't have historical daily data, we can't show accurate weekly views
+            # Set to None to indicate data is not available
+            performance_data["youtube_views_this_week"] = None
+
+            # Get top video by views (lifetime)
+            if videos:
+                top_video = max(videos, key=lambda v: v.view_count or 0)
+                performance_data["top_video_this_week"] = top_video.title
+
+            # No growth data available without historical tracking
+            performance_data["youtube_growth_percentage"] = None
+
+        except Exception as e:
+            logger.warning(f"Error getting YouTube data: {str(e)}")
+
+        # Get UTM link clicks data
+        try:
+            # Get active UTM links count
+            utm_links = db.query(UTMLink).filter(UTMLink.is_active == True).all()
+            performance_data["active_utm_links"] = len(utm_links)
+
+            # Get total clicks for all UTM links
+            total_clicks = 0
+            top_link_name = "N/A"
+            max_clicks = 0
+
+            for link in utm_links:
+                click_count = db.query(LinkClick).filter(LinkClick.utm_link_id == link.id).count()
+                total_clicks += click_count
+
+                if click_count > max_clicks:
+                    max_clicks = click_count
+                    top_link_name = link.name or f"Link {link.id}"
+
+            performance_data["utm_clicks_this_week"] = total_clicks
+            performance_data["top_utm_link_this_week"] = top_link_name
+
+            # No growth data available without historical tracking
+            performance_data["utm_growth_percentage"] = None
+
+        except Exception as e:
+            logger.warning(f"Error getting UTM data: {str(e)}")
+
+        # Get website analytics data from PostHog
+        try:
+            from app.services.posthog_service import posthog_service
+
+            if posthog_service:
+                # Get website visits this week
+                website_data = await posthog_service.get_website_analytics(days=7)
+                if website_data:
+                    performance_data["website_visits_this_week"] = website_data.get("total_visits", 0)
+                    performance_data["unique_visitors_this_week"] = website_data.get("unique_visitors", 0)
+
+                    # Get top page from PostHog data
+                    top_pages = website_data.get("top_pages", [])
+                    if top_pages:
+                        top_page = top_pages[0].get("page", "N/A")
+                        # Clean up the page URL for display
+                        if top_page.startswith("www."):
+                            performance_data["top_website_page_this_week"] = top_page
+                        elif top_page != "N/A":
+                            performance_data["top_website_page_this_week"] = f"Page: {top_page}"
+                        else:
+                            performance_data["top_website_page_this_week"] = "N/A"
+
+                # No accurate growth data available without proper historical comparison
+                performance_data["website_growth_percentage"] = None
+
+        except Exception as e:
+            logger.warning(f"Error getting website data: {str(e)}")
+
+        logger.info(f"Weekly performance data: {performance_data}")
+        return performance_data
+
+    except Exception as e:
+        logger.error(f"Error getting weekly performance: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get weekly performance data")
+
+
+# Simple focused endpoints for individual metrics
+
+@router.get("/youtube-views-weekly")
+async def get_youtube_views_weekly(db: Session = Depends(get_db)):
+    """Get YouTube views for the current week"""
+    try:
+        # Get current week boundaries (Sunday to Saturday)
+        today = datetime.now()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start = today - timedelta(days=days_since_sunday)
+        week_end = week_start + timedelta(days=6)
+
+        # Get YouTube config
+        youtube_config = get_youtube_config()
+        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
+
+        # Get videos from database
+        videos = db.query(Video).filter(
+            Video.channel_id == channel_id,
+            Video.is_active == True
+        ).all()
+
+        # Since we don't have historical daily data, we can't provide accurate weekly views
+        # Return null to indicate data is not available
+        return {
+            "status": "success",
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "youtube_views_this_week": None,
+            "total_videos": len(videos),
+            "data_available": False,
+            "message": "Weekly YouTube views require historical daily analytics data",
+            "lifetime_views": sum(video.view_count or 0 for video in videos) if videos else 0
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting YouTube weekly views: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get YouTube weekly views")
+
+
+@router.get("/link-clicks-weekly")
+async def get_link_clicks_weekly(db: Session = Depends(get_db)):
+    """Get UTM link clicks for the current week"""
+    try:
+        # Get current week boundaries (Sunday to Saturday)
+        today = datetime.now()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start = today - timedelta(days=days_since_sunday)
+        week_end = week_start + timedelta(days=6)
+
+        # Get active UTM links
+        utm_links = db.query(UTMLink).filter(UTMLink.is_active == True).all()
+
+        # Get total clicks for all UTM links (lifetime, not weekly)
+        total_clicks = 0
+        link_details = []
+        top_link = None
+        max_clicks = 0
+
+        for link in utm_links:
+            click_count = db.query(LinkClick).filter(LinkClick.utm_link_id == link.id).count()
+            total_clicks += click_count
+
+            link_details.append({
+                "link_id": link.id,
+                "name": link.name or f"Link {link.id}",
+                "destination_url": link.destination_url,
+                "clicks": click_count,
+                "utm_source": link.utm_source,
+                "utm_medium": link.utm_medium,
+                "utm_campaign": link.utm_campaign
+            })
+
+            if click_count > max_clicks:
+                max_clicks = click_count
+                top_link = link.name or f"Link {link.id}"
+
+        return {
+            "status": "success",
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "link_clicks_this_week": total_clicks,  # Note: This is lifetime, not weekly
+            "active_links_count": len(utm_links),
+            "top_link": top_link or "N/A",
+            "data_available": True,
+            "message": "Showing lifetime clicks (weekly tracking not implemented)",
+            "link_details": sorted(link_details, key=lambda x: x["clicks"], reverse=True)
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting link clicks weekly: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get link clicks weekly")
+
+
+@router.get("/website-visits-weekly")
+async def get_website_visits_weekly():
+    """Get website visits for the current week from PostHog"""
+    try:
+        from app.services.posthog_service import posthog_service
+
+        # Get current week boundaries (Sunday to Saturday)
+        today = datetime.now()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start = today - timedelta(days=days_since_sunday)
+        week_end = week_start + timedelta(days=6)
+
+        if not posthog_service:
+            return {
+                "status": "error",
+                "week_start": week_start.isoformat(),
+                "week_end": week_end.isoformat(),
+                "website_visits_this_week": 0,
+                "unique_visitors": 0,
+                "data_available": False,
+                "message": "PostHog service not configured"
+            }
+
+        # Get website analytics for the past 7 days (approximates current week)
+        website_data = await posthog_service.get_website_analytics(days=7)
+
+        if not website_data:
+            return {
+                "status": "success",
+                "week_start": week_start.isoformat(),
+                "week_end": week_end.isoformat(),
+                "website_visits_this_week": 0,
+                "unique_visitors": 0,
+                "data_available": False,
+                "message": "No website data available"
+            }
+
+        # Get top page
+        top_pages = website_data.get("top_pages", [])
+        top_page = "N/A"
+        if top_pages:
+            page = top_pages[0].get("page", "N/A")
+            if page.startswith("www."):
+                top_page = page
+            elif page != "N/A":
+                top_page = f"Page: {page}"
+
+        return {
+            "status": "success",
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "website_visits_this_week": website_data.get("total_visits", 0),
+            "unique_visitors": website_data.get("unique_visitors", 0),
+            "page_views": website_data.get("total_page_views", 0),
+            "top_page": top_page,
+            "data_available": True,
+            "message": "Data from PostHog for past 7 days",
+            "daily_visits": website_data.get("daily_visits", []),
+            "top_pages": website_data.get("top_pages", [])
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting website visits weekly: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get website visits weekly")
+
+
+@router.get("/subscribers-weekly")
+async def get_subscribers_weekly(db: Session = Depends(get_db)):
+    """Get subscriber growth for the current week"""
+    try:
+        # Get current week boundaries
+        today = datetime.now()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start = today - timedelta(days=days_since_sunday)
+        week_end = week_start + timedelta(days=6)
+
+        # Get YouTube config
+        youtube_config = get_youtube_config()
+        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
+
+        # Get current subscriber count from most recent video data
+        latest_video = db.query(Video).filter(
+            Video.channel_id == channel_id,
+            Video.is_active == True
+        ).order_by(desc(Video.published_at)).first()
+
+        current_subscribers = 6500  # Default from your channel
+        if latest_video and hasattr(latest_video, 'subscriber_count'):
+            current_subscribers = latest_video.subscriber_count or 6500
+
+        return {
+            "status": "success",
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "current_subscribers": current_subscribers,
+            "subscribers_gained_this_week": None,  # Not available without historical data
+            "data_available": False,
+            "message": "Weekly subscriber tracking requires historical daily data"
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting subscribers weekly: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get subscribers weekly")
+
+
+@router.get("/top-content-weekly")
+async def get_top_content_weekly(db: Session = Depends(get_db)):
+    """Get top performing content for the current week"""
+    try:
+        # Get current week boundaries
+        today = datetime.now()
+        days_since_sunday = (today.weekday() + 1) % 7
+        week_start = today - timedelta(days=days_since_sunday)
+        week_end = week_start + timedelta(days=6)
+
+        # Get YouTube config
+        youtube_config = get_youtube_config()
+        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
+
+        # Get top videos (lifetime performance)
+        top_videos = db.query(Video).filter(
+            Video.channel_id == channel_id,
+            Video.is_active == True
+        ).order_by(desc(Video.view_count)).limit(5).all()
+
+        # Get top UTM links
+        utm_links = db.query(UTMLink).filter(UTMLink.is_active == True).all()
+        link_performance = []
+
+        for link in utm_links:
+            click_count = db.query(LinkClick).filter(LinkClick.utm_link_id == link.id).count()
+            if click_count > 0:  # Only include links with clicks
+                link_performance.append({
+                    "name": link.name or f"Link {link.id}",
+                    "clicks": click_count,
+                    "destination_url": link.destination_url,
+                    "utm_campaign": link.utm_campaign
+                })
+
+        link_performance.sort(key=lambda x: x["clicks"], reverse=True)
+
+        # Get website top pages
+        top_website_pages = []
+        try:
+            from app.services.posthog_service import posthog_service
+            if posthog_service:
+                website_data = await posthog_service.get_website_analytics(days=7)
+                if website_data:
+                    top_website_pages = website_data.get("top_pages", [])[:5]
+        except Exception as e:
+            logger.warning(f"Error getting website top pages: {str(e)}")
+
+        return {
+            "status": "success",
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "top_videos": [
+                {
+                    "title": video.title,
+                    "views": video.view_count,
+                    "likes": video.like_count,
+                    "comments": video.comment_count,
+                    "published_at": video.published_at.isoformat() if video.published_at else None,
+                    "video_id": video.video_id
+                }
+                for video in top_videos
+            ],
+            "top_utm_links": link_performance[:5],
+            "top_website_pages": top_website_pages,
+            "data_available": True,
+            "message": "Showing lifetime performance (weekly tracking not implemented for YouTube)"
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting top content weekly: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get top content weekly")
+
+
+@router.get("/summary-stats")
+async def get_summary_stats(db: Session = Depends(get_db)):
+    """Get overall summary statistics"""
+    try:
+        # Get YouTube config
+        youtube_config = get_youtube_config()
+        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
+
+        # Get YouTube stats
+        videos = db.query(Video).filter(
+            Video.channel_id == channel_id,
+            Video.is_active == True
+        ).all()
+
+        total_views = sum(video.view_count or 0 for video in videos)
+        total_likes = sum(video.like_count or 0 for video in videos)
+        total_comments = sum(video.comment_count or 0 for video in videos)
+        avg_views = total_views / len(videos) if videos else 0
+
+        # Get UTM stats
+        utm_links = db.query(UTMLink).filter(UTMLink.is_active == True).all()
+        total_utm_clicks = 0
+        for link in utm_links:
+            total_utm_clicks += db.query(LinkClick).filter(LinkClick.utm_link_id == link.id).count()
+
+        # Get website stats
+        website_stats = {"total_visits": 0, "unique_visitors": 0}
+        try:
+            from app.services.posthog_service import posthog_service
+            if posthog_service:
+                website_data = await posthog_service.get_website_analytics(days=30)
+                if website_data:
+                    website_stats = {
+                        "total_visits": website_data.get("total_visits", 0),
+                        "unique_visitors": website_data.get("unique_visitors", 0)
+                    }
+        except Exception as e:
+            logger.warning(f"Error getting website stats: {str(e)}")
+
+        return {
+            "status": "success",
+            "youtube": {
+                "total_subscribers": 6500,  # Your current subscriber count
+                "total_videos": len(videos),
+                "total_views": total_views,
+                "total_likes": total_likes,
+                "total_comments": total_comments,
+                "average_views_per_video": round(avg_views, 0)
+            },
+            "utm_links": {
+                "active_links": len(utm_links),
+                "total_clicks": total_utm_clicks
+            },
+            "website": website_stats,
+            "last_updated": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting summary stats: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get summary stats")
+
+
+@router.get("/growth-metrics")
+async def get_growth_metrics(db: Session = Depends(get_db), days: int = 30):
+    """Get growth metrics over specified period"""
+    try:
+        # Get date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        # Get YouTube config
+        youtube_config = get_youtube_config()
+        channel_id = youtube_config.get("channel_id", "UCzGcYErpBX4ldvv0l7MWLfw")
+
+        # Get videos published in the period
+        recent_videos = db.query(Video).filter(
+            Video.channel_id == channel_id,
+            Video.is_active == True,
+            Video.published_at >= start_date,
+            Video.published_at <= end_date
+        ).all()
+
+        # Get UTM clicks in the period (if we had timestamp data)
+        utm_links = db.query(UTMLink).filter(UTMLink.is_active == True).all()
+        recent_utm_clicks = 0  # Would need timestamp data on LinkClick model
+
+        # Get website growth
+        website_growth = {"current_period": 0, "previous_period": 0, "growth_rate": 0}
+        try:
+            from app.services.posthog_service import posthog_service
+            if posthog_service:
+                current_data = await posthog_service.get_website_analytics(days=days)
+                # Would need to compare with previous period for real growth calculation
+                if current_data:
+                    website_growth["current_period"] = current_data.get("total_visits", 0)
+        except Exception as e:
+            logger.warning(f"Error getting website growth: {str(e)}")
+
+        return {
+            "status": "success",
+            "period_days": days,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "youtube": {
+                "videos_published": len(recent_videos),
+                "total_views_from_new_videos": sum(video.view_count or 0 for video in recent_videos),
+                "subscriber_growth": None,  # Would need historical data
+                "data_available": len(recent_videos) > 0
+            },
+            "utm_links": {
+                "clicks_in_period": recent_utm_clicks,
+                "data_available": False,
+                "message": "UTM click timestamps not tracked"
+            },
+            "website": website_growth,
+            "message": "Growth calculations require historical baseline data"
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting growth metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get growth metrics")
+
+
+@router.get("/health")
+async def get_analytics_health():
+    """Check the health of analytics data sources"""
+    try:
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "services": {}
+        }
+
+        # Check database connection
+        try:
+            from sqlalchemy import text
+            # Use the dependency injection that's already working
+            db = next(get_db())
+            db.execute(text("SELECT 1"))
+            health_status["services"]["database"] = {"status": "healthy", "message": "Connected"}
+        except Exception as e:
+            health_status["services"]["database"] = {"status": "unhealthy", "message": str(e)}
+            health_status["status"] = "degraded"
+
+        # Check PostHog service
+        try:
+            from app.services.posthog_service import posthog_service
+            if posthog_service:
+                # Try a simple API call
+                test_data = await posthog_service.get_website_analytics(days=1)
+                health_status["services"]["posthog"] = {"status": "healthy", "message": "API responding"}
+            else:
+                health_status["services"]["posthog"] = {"status": "not_configured", "message": "Service not configured"}
+        except Exception as e:
+            health_status["services"]["posthog"] = {"status": "unhealthy", "message": str(e)}
+            health_status["status"] = "degraded"
+
+        # Check YouTube API configuration
+        try:
+            youtube_config = get_youtube_config()
+            if youtube_config.get("api_key") and youtube_config.get("channel_id"):
+                health_status["services"]["youtube"] = {"status": "configured", "message": "API key and channel ID present"}
+            else:
+                health_status["services"]["youtube"] = {"status": "not_configured", "message": "Missing API key or channel ID"}
+        except Exception as e:
+            health_status["services"]["youtube"] = {"status": "error", "message": str(e)}
+
+        return health_status
+
+    except Exception as e:
+        logger.error(f"Error checking analytics health: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to check analytics health")

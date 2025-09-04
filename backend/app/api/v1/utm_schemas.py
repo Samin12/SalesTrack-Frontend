@@ -12,16 +12,16 @@ class UTMLinkCreate(BaseModel):
     destination_url: str = Field(..., description="The destination URL where users will be redirected")
     utm_content: Optional[str] = Field(None, description="Optional UTM content parameter")
     utm_term: Optional[str] = Field(None, description="Optional UTM term parameter")
-    tracking_type: Literal["server_redirect", "direct_ga4"] = Field("server_redirect", description="Tracking method: server_redirect for click tracking through our server, direct_ga4 for GA4-only tracking")
+    tracking_type: Literal["server_redirect", "direct_ga4", "direct_posthog"] = Field("direct_posthog", description="Tracking method: server_redirect for click tracking through our server, direct_ga4 for GA4-only tracking (legacy), direct_posthog for PostHog tracking (recommended)")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "video_id": "dQw4w9WgXcQ",
                 "destination_url": "https://example.com/landing-page",
                 "utm_content": "description_link",
                 "utm_term": "youtube_traffic",
-                "tracking_type": "direct_ga4"
+                "tracking_type": "direct_posthog"
             }
         }
 

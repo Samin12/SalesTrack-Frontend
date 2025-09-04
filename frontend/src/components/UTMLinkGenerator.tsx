@@ -13,7 +13,7 @@ interface UTMLink {
   destination_url: string;
   tracking_url: string;
   shareable_url: string;
-  tracking_type: 'server_redirect' | 'direct_ga4';
+  tracking_type: 'server_redirect' | 'direct_ga4' | 'direct_posthog';
   utm_campaign: string;
   utm_content?: string;
   utm_term?: string;
@@ -34,7 +34,7 @@ export const UTMLinkGenerator: React.FC<UTMLinkGeneratorProps> = ({
   const [destinationUrl, setDestinationUrl] = useState<string>('');
   const [utmContent, setUtmContent] = useState<string>('');
   const [utmTerm, setUtmTerm] = useState<string>('');
-  const [trackingType, setTrackingType] = useState<'direct_ga4' | 'server_redirect'>('direct_ga4');
+  const [trackingType, setTrackingType] = useState<'direct_posthog' | 'direct_ga4' | 'server_redirect'>('direct_posthog');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [generatedLink, setGeneratedLink] = useState<UTMLink | null>(null);
@@ -142,7 +142,7 @@ export const UTMLinkGenerator: React.FC<UTMLinkGeneratorProps> = ({
     setDestinationUrl('');
     setUtmContent('');
     setUtmTerm('');
-    setTrackingType('direct_ga4');
+    setTrackingType('direct_posthog');
     setGeneratedLink(null);
     setShowSuccess(false);
     setError('');
@@ -233,20 +233,39 @@ export const UTMLinkGenerator: React.FC<UTMLinkGeneratorProps> = ({
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <input
+                id="direct-posthog"
+                type="radio"
+                name="tracking-type"
+                value="direct_posthog"
+                checked={trackingType === 'direct_posthog'}
+                onChange={(e) => setTrackingType(e.target.value as 'direct_posthog' | 'direct_ga4' | 'server_redirect')}
+                className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+              />
+              <div className="flex-1">
+                <label htmlFor="direct-posthog" className="text-sm font-medium text-gray-900 cursor-pointer">
+                  🚀 PostHog Analytics (Recommended)
+                </label>
+                <p className="text-xs text-gray-600 mt-1">
+                  Privacy-first analytics with advanced user journey tracking, A/B testing, and real-time insights.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <input
                 id="direct-ga4"
                 type="radio"
                 name="tracking-type"
                 value="direct_ga4"
                 checked={trackingType === 'direct_ga4'}
-                onChange={(e) => setTrackingType(e.target.value as 'direct_ga4')}
+                onChange={(e) => setTrackingType(e.target.value as 'direct_posthog' | 'direct_ga4' | 'server_redirect')}
                 className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
               <div className="flex-1">
                 <label htmlFor="direct-ga4" className="text-sm font-medium text-gray-900 cursor-pointer">
-                  🎯 Direct GA4 Tracking (Recommended)
+                  📊 Google Analytics (Legacy)
                 </label>
                 <p className="text-xs text-gray-600 mt-1">
-                  Links go directly to your destination with UTM parameters. Best user experience.
+                  Traditional Google Analytics tracking. Maintained for backward compatibility.
                 </p>
               </div>
             </div>
@@ -257,15 +276,15 @@ export const UTMLinkGenerator: React.FC<UTMLinkGeneratorProps> = ({
                 name="tracking-type"
                 value="server_redirect"
                 checked={trackingType === 'server_redirect'}
-                onChange={(e) => setTrackingType(e.target.value as 'server_redirect')}
+                onChange={(e) => setTrackingType(e.target.value as 'direct_posthog' | 'direct_ga4' | 'server_redirect')}
                 className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
               <div className="flex-1">
                 <label htmlFor="server-redirect" className="text-sm font-medium text-gray-900 cursor-pointer">
-                  🔄 Server Redirect Tracking
+                  🔄 Server + PostHog Tracking
                 </label>
                 <p className="text-xs text-gray-600 mt-1">
-                  Links route through our server for detailed analytics. Slight redirect delay.
+                  Links route through your server first, then redirect. Provides both server analytics AND PostHog data for maximum insight.
                 </p>
               </div>
             </div>

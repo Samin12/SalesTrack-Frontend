@@ -219,7 +219,7 @@ export interface UTMLink {
   utm_term?: string;
   tracking_url: string;
   pretty_slug?: string;
-  tracking_type: 'server_redirect' | 'direct_ga4';
+  tracking_type: 'server_redirect' | 'direct_ga4' | 'direct_posthog';
   direct_url?: string;
   shareable_url: string;
   click_count: number;

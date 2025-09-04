@@ -17,7 +17,7 @@ from app.models.channel import Channel
 from app.services.youtube import YouTubeDataService
 from app.services.historical_metrics_service import HistoricalMetricsService
 from app.core.config import get_youtube_config
-from app.database import get_db
+from app.core.database import get_db
 
 logger = logging.getLogger(__name__)
 

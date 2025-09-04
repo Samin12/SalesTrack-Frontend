@@ -6,6 +6,8 @@ import useSWR from 'swr';
 import Layout from '@/components/Layout/Layout';
 import MetricCard from '@/components/custom/MetricCard';
 import GrowthChart from '@/components/Charts/GrowthChart';
+import { WebsiteAnalytics } from '@/components/WebsiteAnalytics';
+import { WeeklySummary } from '@/components/WeeklySummary';
 import {
   UsersIcon,
   VideoCameraIcon,
@@ -17,6 +19,13 @@ import apiClient from '@/services/api';
 import { AnalyticsOverviewResponse, ChartDataPoint } from '@/types';
 
 export default function Dashboard() {
+  // Use the new dashboard data endpoint
+  const { data: dashboardData, error: dashboardError, isLoading: dashboardLoading } = useSWR(
+    '/api/v1/analytics/dashboard-data',
+    () => apiClient.getDashboardData()
+  );
+
+  // Keep the old overview for compatibility with some components
   const { data: overview, error, isLoading } = useSWR<AnalyticsOverviewResponse>(
     '/api/v1/analytics/overview',
     () => apiClient.getAnalyticsOverview()
@@ -26,6 +35,9 @@ export default function Dashboard() {
     '/api/v1/analytics/channel/growth?days=30',
     () => apiClient.getChannelGrowth({ days: 30 })
   );
+
+  // Extract real YouTube data from dashboard response
+  const youtubeData = dashboardData?.status === 'success' ? dashboardData.data : null;
 
   // Transform growth data for chart
   const chartData: ChartDataPoint[] = growthData?.historical_data?.map(item => ({
@@ -40,7 +52,7 @@ export default function Dashboard() {
     label: 'views'
   })) || [];
 
-  if (error) {
+  if (dashboardError || error) {
     return (
       <Layout title="Dashboard">
         <div className="container-app section-padding">
@@ -52,7 +64,7 @@ export default function Dashboard() {
               Unable to load analytics data
             </h2>
             <p className="text-gray-600 mb-6">
-              {error.message || 'Please check your connection and try again.'}
+              {dashboardError?.message || error?.message || 'Please check your connection and try again.'}
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -79,39 +91,42 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Key Metrics */}
+        {/* Weekly Summary */}
+        <WeeklySummary />
+
+        {/* Key Metrics - Using Real YouTube Data */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
             title="Subscribers"
-            value={overview?.channel_overview?.subscriber_count || 0}
-            change={overview?.recent_growth?.subscriber_growth_rate}
-            changeLabel="total"
+            value={youtubeData?.total_subscribers || 0}
+            change={youtubeData?.youtube_growth_percentage}
+            changeLabel="growth"
             icon={UsersIcon}
-            loading={isLoading}
+            loading={dashboardLoading}
           />
 
           <MetricCard
             title="Total Views"
-            value={overview?.channel_overview?.view_count || 0}
-            change={overview?.recent_growth?.view_growth_rate}
+            value={youtubeData?.total_views || 0}
             changeLabel="lifetime"
             icon={EyeIcon}
-            loading={isLoading}
+            loading={dashboardLoading}
           />
-          
+
           <MetricCard
             title="Videos"
-            value={overview?.channel_overview?.video_count || 0}
+            value={youtubeData?.total_videos || 0}
             icon={VideoCameraIcon}
-            loading={isLoading}
+            loading={dashboardLoading}
           />
-          
+
           <MetricCard
-            title="Website Clicks"
-            value={overview?.traffic_summary?.total_clicks_last_30_days || 0}
-            changeLabel="last 30 days"
-            icon={GlobeAltIcon}
-            loading={isLoading}
+            title="Views This Week"
+            value={youtubeData?.youtube_views_this_week || 0}
+            change={youtubeData?.youtube_growth_percentage}
+            changeLabel="vs last week"
+            icon={EyeIcon}
+            loading={dashboardLoading}
           />
         </div>
 
@@ -132,6 +147,11 @@ export default function Dashboard() {
           />
         </div>
 
+        {/* Website Analytics */}
+        <div className="mb-8">
+          <WebsiteAnalytics days={7} />
+        </div>
+
         {/* Top Videos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Top Performing Videos */}
@@ -141,7 +161,7 @@ export default function Dashboard() {
               Top Performing Videos
             </h3>
             
-            {isLoading ? (
+            {dashboardLoading ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="flex items-center space-x-3">
@@ -155,7 +175,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {overview?.top_videos?.slice(0, 3).map((video, index) => (
+                {youtubeData?.recent_videos?.slice(0, 3).map((video: any, index: number) => (
                   <div key={video.video_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                     <div className="flex items-center justify-center w-8 h-8 bg-primary-100 text-primary-600 rounded-lg text-sm font-bold">
                       {index + 1}
@@ -165,11 +185,13 @@ export default function Dashboard() {
                         {video.title}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {video.view_count.toLocaleString()} views
+                        {video.view_count?.toLocaleString()} views • {video.like_count} likes
                       </p>
                     </div>
                   </div>
-                ))}
+                )) || (
+                  <p className="text-gray-500 text-sm">No recent videos available</p>
+                )}
               </div>
             )}
           </div>

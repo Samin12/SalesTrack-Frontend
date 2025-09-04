@@ -30,15 +30,22 @@ class UTMLink(Base):
     is_active = Column(Integer, default=1)  # 1 = active, 0 = inactive
 
     # Tracking Method Configuration
-    tracking_type = Column(String(20), default="server_redirect", nullable=False)  # 'server_redirect' or 'direct_ga4'
-    direct_url = Column(Text, nullable=True)  # Direct URL with UTM parameters for GA4-only tracking
+    tracking_type = Column(String(20), default="server_redirect", nullable=False)  # 'server_redirect' or 'direct_posthog'
+    direct_url = Column(Text, nullable=True)  # Direct URL with UTM parameters for PostHog-only tracking
 
-    # Google Analytics 4 Integration
-    ga4_enabled = Column(Boolean, default=True, nullable=False)  # Enable GA4 tracking
-    ga4_clicks = Column(Integer, default=0, nullable=False)  # GA4 event count
-    ga4_users = Column(Integer, default=0, nullable=False)  # GA4 unique users
-    ga4_sessions = Column(Integer, default=0, nullable=False)  # GA4 sessions
-    ga4_last_sync = Column(DateTime(timezone=True), nullable=True)  # Last GA4 sync
+    # PostHog Analytics Integration
+    posthog_enabled = Column(Boolean, default=True, nullable=False)  # Enable PostHog tracking
+    posthog_events = Column(Integer, default=0, nullable=False)  # PostHog event count
+    posthog_users = Column(Integer, default=0, nullable=False)  # PostHog unique users
+    posthog_sessions = Column(Integer, default=0, nullable=False)  # PostHog sessions
+    posthog_last_sync = Column(DateTime(timezone=True), nullable=True)  # Last PostHog sync
+
+    # Legacy GA4 Integration (keeping for migration period)
+    ga4_enabled = Column(Boolean, default=False, nullable=False)  # Enable GA4 tracking (deprecated)
+    ga4_clicks = Column(Integer, default=0, nullable=False)  # GA4 event count (deprecated)
+    ga4_users = Column(Integer, default=0, nullable=False)  # GA4 unique users (deprecated)
+    ga4_sessions = Column(Integer, default=0, nullable=False)  # GA4 sessions (deprecated)
+    ga4_last_sync = Column(DateTime(timezone=True), nullable=True)  # Last GA4 sync (deprecated)
     
     # Relationships
     # Note: No direct relationship to Video model to allow tracking new videos
@@ -62,15 +69,20 @@ class UTMLink(Base):
 
     @property
     def is_direct_ga4(self):
-        """Check if this link uses direct GA4 tracking."""
+        """Check if this link uses direct GA4 tracking (deprecated)."""
         return self.tracking_type == "direct_ga4"
+
+    @property
+    def is_direct_posthog(self):
+        """Check if this link uses direct PostHog tracking."""
+        return self.tracking_type == "direct_posthog"
 
     @property
     def shareable_url(self):
         """Get the URL that should be shared publicly."""
-        if self.is_direct_ga4:
-            # For Direct GA4, always return the direct destination URL with UTM parameters
-            # This ensures GA4 tracking works independently of localhost/server
+        if self.is_direct_posthog or self.is_direct_ga4:
+            # For Direct PostHog/GA4, always return the direct destination URL with UTM parameters
+            # This ensures tracking works independently of localhost/server
             return self.direct_url or self.tracking_url
         else:
             # Server redirect links always use short URLs
@@ -90,11 +102,20 @@ class UTMLink(Base):
     @property
     def display_info(self):
         """Get display information for frontend."""
-        if self.is_direct_ga4:
+        if self.is_direct_posthog:
             return {
                 "primary_url": self.direct_url or self.tracking_url,
-                "primary_label": "Direct GA4 URL",
-                "primary_description": "Goes directly to destination with UTM parameters - independent of server",
+                "primary_label": "Direct PostHog URL",
+                "primary_description": "Goes directly to destination with UTM parameters - tracked by PostHog",
+                "secondary_url": f"/api/v1/go/{self.pretty_slug}" if self.pretty_slug else f"/api/v1/r/{self.id}",
+                "secondary_label": "Optional Short URL",
+                "secondary_description": "Alternative short URL that redirects through your server"
+            }
+        elif self.is_direct_ga4:
+            return {
+                "primary_url": self.direct_url or self.tracking_url,
+                "primary_label": "Direct GA4 URL (Legacy)",
+                "primary_description": "Goes directly to destination with UTM parameters - tracked by GA4",
                 "secondary_url": f"/api/v1/go/{self.pretty_slug}" if self.pretty_slug else f"/api/v1/r/{self.id}",
                 "secondary_label": "Optional Short URL",
                 "secondary_description": "Alternative short URL that redirects through your server"

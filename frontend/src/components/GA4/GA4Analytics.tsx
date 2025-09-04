@@ -117,9 +117,9 @@ const GA4Analytics: React.FC<GA4AnalyticsProps> = ({ utmLinks, className = '' })
             <ChartBarIcon className="w-8 h-8 text-blue-600" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">📊 GA4 Analytics Integration</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">📊 GA4 Analytics (Legacy)</h2>
             <p className="text-sm text-gray-700 mb-3">
-              This tab shows how your UTM tracking links perform in Google Analytics 4, comparing data from both tracking methods:
+              Legacy Google Analytics 4 integration. PostHog is now the recommended analytics platform for enhanced privacy and insights:
             </p>
             <div className="grid md:grid-cols-2 gap-4 text-sm">
               <div className="bg-white p-3 rounded-lg border border-green-200">

@@ -177,6 +177,11 @@ class APIClient {
     return response.data;
   }
 
+  async getDashboardData(): Promise<any> {
+    const response = await this.client.get('/api/v1/analytics/dashboard-data');
+    return response.data;
+  }
+
   async syncAnalyticsData(): Promise<BaseResponse> {
     const response = await this.client.post('/api/v1/analytics/sync');
     return response.data;
@@ -237,6 +242,7 @@ export const {
   getVideoPerformance,
   getWebsiteTraffic,
   getAnalyticsOverview,
+  getDashboardData,
   syncAnalyticsData,
   getWeeklyVideoPerformance,
   getVideoWeeklyHistory,

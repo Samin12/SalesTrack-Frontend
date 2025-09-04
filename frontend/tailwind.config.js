@@ -10,17 +10,17 @@ module.exports = {
   	extend: {
   		colors: {
   			primary: {
-  				'50': '#fef7ff',
-  				'100': '#fdeeff',
-  				'200': '#fcdcff',
-  				'300': '#fbb9ff',
-  				'400': '#f786ff',
-  				'500': '#f054ff',
-  				'600': '#e532f7',
-  				'700': '#c318db',
-  				'800': '#a118b3',
-  				'900': '#851a92',
-  				'950': '#5a0a63',
+  				'50': '#fef2f2',
+  				'100': '#fee2e2',
+  				'200': '#fecaca',
+  				'300': '#fca5a5',
+  				'400': '#f87171',
+  				'500': '#ef4444',
+  				'600': '#dc2626',
+  				'700': '#b91c1c',
+  				'800': '#991b1b',
+  				'900': '#7f1d1d',
+  				'950': '#450a0a',
   				DEFAULT: 'hsl(var(--primary))',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
@@ -151,8 +151,8 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		boxShadow: {
-  			glow: '0 0 20px rgba(240, 84, 255, 0.3)',
-  			'glow-lg': '0 0 40px rgba(240, 84, 255, 0.4)'
+  			glow: '0 0 20px rgba(220, 38, 38, 0.3)',
+  			'glow-lg': '0 0 40px rgba(220, 38, 38, 0.4)'
   		},
   		animation: {
   			'fade-in': 'fadeIn 0.5s ease-in-out',

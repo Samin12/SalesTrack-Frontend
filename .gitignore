@@ -81,6 +81,7 @@ ga4-service-account.json
 google-credentials.json
 credentials.json
 token.json
+youtube_oauth_config.json
 
 # Temporary files
 *.tmp
@@ -133,3 +134,6 @@ celerybeat.pid
 # Backup files
 *.bak
 *.backup
+
+# External projects
+dub/

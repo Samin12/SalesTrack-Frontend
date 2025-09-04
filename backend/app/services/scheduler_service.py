@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.core.database import get_db
 from app.services.daily_sync_service import DailySyncService
 from app.services.ga4_service import ga4_service
 from app.models.daily_sync import SyncConfiguration
