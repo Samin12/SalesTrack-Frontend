@@ -1,5 +1,14 @@
 import useSWR from 'swr';
-import { fetcher } from '../services/api';
+import apiClient from '../services/api';
+
+// Fetcher function for SWR
+const fetcher = async (url: string) => {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${url}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch data');
+  }
+  return response.json();
+};
 
 export interface WebsiteAnalytics {
   total_visits: number;
