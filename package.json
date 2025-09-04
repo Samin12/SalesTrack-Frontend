@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start --port $PORT --hostname 0.0.0.0",
+    "start": "next start -H 0.0.0.0 -p $PORT",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "railway:build": "npm ci && npm run build",
