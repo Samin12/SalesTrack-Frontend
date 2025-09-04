@@ -249,3 +249,6 @@ export const {
   isAuthenticated,
   handleError,
 } = apiClient;
+
+// SWR fetcher function
+export const fetcher = (url: string) => apiClient.client.get(url).then(res => res.data);
