@@ -49,7 +49,7 @@ export default function VideosPage() {
   // Use new clean weekly summary endpoint
   const { data: weeklyData, isLoading: weeklyLoading, error: weeklyError } = useSWR(
     '/api/v1/analytics/weekly-summary',
-    (url) => fetch(`http://localhost:8000${url}`).then(res => res.json())
+    (url) => fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${url}`).then(res => res.json())
   );
 
 
