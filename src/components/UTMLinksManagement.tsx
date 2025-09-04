@@ -91,7 +91,8 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
     setError('');
 
     try {
-      const response = await fetch('/api/v1/utm-links');
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-ad878.up.railway.app';
+      const response = await fetch(`${API_BASE_URL}/api/v1/utm-links`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch UTM links');
@@ -117,7 +118,8 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
     setShowSuccess(false);
 
     try {
-      const response = await fetch('/api/v1/utm-links', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-ad878.up.railway.app';
+      const response = await fetch(`${API_BASE_URL}/api/v1/utm-links`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +200,8 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
   const handleTestClick = async (link: UTMLink) => {
     setTesting(link.id);
     try {
-      const response = await fetch(`/api/v1/utm-links/${link.id}/click`, {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-ad878.up.railway.app';
+      const response = await fetch(`${API_BASE_URL}/api/v1/utm-links/${link.id}/click`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -232,7 +235,8 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
     }
 
     try {
-      const response = await fetch(`/api/v1/utm-links/${linkId}`, {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-ad878.up.railway.app';
+      const response = await fetch(`${API_BASE_URL}/api/v1/utm-links/${linkId}`, {
         method: 'DELETE',
       });
 

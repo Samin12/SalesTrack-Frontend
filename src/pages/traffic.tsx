@@ -4,8 +4,7 @@ import Head from 'next/head';
 import Layout from '@/components/Layout/Layout';
 import { VideoTrafficAnalytics } from '../components/VideoTrafficAnalytics';
 import UTMLinksManagement from '../components/UTMLinksManagement';
-import GA4Settings from '../components/GA4/GA4Settings';
-import GA4Analytics from '../components/GA4/GA4Analytics';
+
 import PostHogSettings from '../components/PostHog/PostHogSettings';
 import PostHogAnalytics from '../components/PostHog/PostHogAnalytics';
 import { Link2, TrendingUp, BarChart3, Database } from 'lucide-react';
@@ -43,64 +42,7 @@ interface UTMLink {
   tracking_type: 'server_redirect' | 'direct_ga4' | 'direct_posthog';
 }
 
-// GA4 Analytics Tab Component
-const GA4AnalyticsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
-  const [utmLinks, setUtmLinks] = useState<UTMLink[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchUTMLinks();
-  }, [refreshTrigger]);
-
-  const fetchUTMLinks = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/v1/utm-links');
-      const data = await response.json();
-
-      if (data.status === 'success') {
-        setUtmLinks(data.links || []);
-      } else {
-        setError('Failed to fetch UTM links');
-      }
-    } catch (err) {
-      setError('Error fetching UTM links');
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-center text-red-600">
-          <p>{error}</p>
-          <button
-            onClick={fetchUTMLinks}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return <GA4Analytics utmLinks={utmLinks} />;
-};
 
 // PostHog Analytics Tab Component
 const PostHogAnalyticsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
@@ -114,12 +56,13 @@ const PostHogAnalyticsTab: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
 
   const fetchUTMLinks = async () => {
     try {
-      const response = await fetch('/api/v1/utm-links');
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://web-production-ad878.up.railway.app';
+      const response = await fetch(`${API_BASE_URL}/api/v1/utm-links`);
       if (!response.ok) {
         throw new Error('Failed to fetch UTM links');
       }
       const data = await response.json();
-      setUtmLinks(data.utm_links || []);
+      setUtmLinks(data.links || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch UTM links');
     } finally {
@@ -163,7 +106,7 @@ const TrafficPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState<'utm-links' | 'analytics' | 'ga4-settings' | 'ga4-analytics' | 'posthog-settings' | 'posthog-analytics'>('utm-links');
+  const [activeTab, setActiveTab] = useState<'utm-links' | 'analytics' | 'posthog-settings' | 'posthog-analytics'>('utm-links');
 
   useEffect(() => {
     fetchVideos();
@@ -335,32 +278,7 @@ const TrafficPage: React.FC = () => {
                     PostHog Analytics
                   </div>
                 </button>
-                <button
-                  onClick={() => setActiveTab('ga4-settings')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'ga4-settings'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Database className="w-4 h-4" />
-                    GA4 Settings (Legacy)
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('ga4-analytics')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'ga4-analytics'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
-                    GA4 Analytics (Legacy)
-                  </div>
-                </button>
+
               </nav>
             </div>
           </div>
@@ -377,13 +295,7 @@ const TrafficPage: React.FC = () => {
             <VideoTrafficAnalytics refreshTrigger={refreshTrigger} />
           )}
 
-          {activeTab === 'ga4-settings' && (
-            <GA4Settings />
-          )}
 
-          {activeTab === 'ga4-analytics' && (
-            <GA4AnalyticsTab refreshTrigger={refreshTrigger} />
-          )}
 
           {activeTab === 'posthog-settings' && (
             <PostHogSettings />
