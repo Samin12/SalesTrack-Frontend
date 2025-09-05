@@ -16,7 +16,9 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   ArrowUpIcon,
-  ArrowDownIcon
+  ArrowDownIcon,
+  ClipboardIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline';
 
 interface AnalyticsData {
@@ -104,37 +106,184 @@ const Analytics: NextPage = () => {
 
 
 
-  const VideoAnalyticsRow: React.FC<{ video: CombinedVideoAnalytics }> = ({ video }) => (
-    <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
-          {video.video_info.title}
-        </div>
-        <div className="text-sm text-gray-500">
-          {new Date(video.video_info.published_at).toLocaleDateString()}
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {formatNumber(video.video_info.view_count)}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {video.utm_links.length}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {formatNumber(video.total_utm_clicks)}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {((video.click_through_rate || 0) * 100).toFixed(2)}%
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex space-x-2">
-          <GrowthIndicator value={video.weekly_growth.views_growth} />
-          <span className="text-gray-400">|</span>
-          <GrowthIndicator value={video.weekly_growth.clicks_growth} />
-        </div>
-      </td>
-    </tr>
-  );
+  const VideoAnalyticsRow: React.FC<{ video: CombinedVideoAnalytics }> = ({ video }) => {
+    const [copiedLinkId, setCopiedLinkId] = useState<number | null>(null);
+    const [copiedVideoId, setCopiedVideoId] = useState<boolean>(false);
+
+    const handleCopyYouTubeLink = async () => {
+      try {
+        const youtubeUrl = `https://www.youtube.com/watch?v=${video.video_info.video_id}`;
+        await navigator.clipboard.writeText(youtubeUrl);
+        setCopiedVideoId(true);
+
+        // Reset the copied state after 2 seconds
+        setTimeout(() => setCopiedVideoId(false), 2000);
+      } catch (error) {
+        console.error('Failed to copy YouTube link:', error);
+        // Fallback for older browsers
+        try {
+          const youtubeUrl = `https://www.youtube.com/watch?v=${video.video_info.video_id}`;
+          const textArea = document.createElement('textarea');
+          textArea.value = youtubeUrl;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+
+          setCopiedVideoId(true);
+          setTimeout(() => setCopiedVideoId(false), 2000);
+        } catch (fallbackError) {
+          console.error('Fallback copy also failed:', fallbackError);
+        }
+      }
+    };
+
+    const handleCopyUTMLink = async (link: UTMLink) => {
+      try {
+        // Construct the full UTM URL by combining destination_url with UTM parameters
+        const baseUrl = link.destination_url;
+        const utmParams = new URLSearchParams();
+
+        // Add UTM parameters if they exist
+        if (link.utm_source) utmParams.append('utm_source', link.utm_source);
+        if (link.utm_medium) utmParams.append('utm_medium', link.utm_medium);
+        if (link.utm_campaign) utmParams.append('utm_campaign', link.utm_campaign);
+        if (link.utm_content) utmParams.append('utm_content', link.utm_content);
+        if (link.utm_term) utmParams.append('utm_term', link.utm_term);
+
+        // Construct the full URL with UTM parameters
+        const urlToCopy = utmParams.toString()
+          ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${utmParams.toString()}`
+          : baseUrl;
+
+        await navigator.clipboard.writeText(urlToCopy);
+        setCopiedLinkId(link.id);
+
+        // Reset the copied state after 2 seconds
+        setTimeout(() => setCopiedLinkId(null), 2000);
+      } catch (error) {
+        console.error('Failed to copy UTM link:', error);
+        // Fallback for older browsers
+        try {
+          const baseUrl = link.destination_url;
+          const utmParams = new URLSearchParams();
+
+          // Add UTM parameters if they exist
+          if (link.utm_source) utmParams.append('utm_source', link.utm_source);
+          if (link.utm_medium) utmParams.append('utm_medium', link.utm_medium);
+          if (link.utm_campaign) utmParams.append('utm_campaign', link.utm_campaign);
+          if (link.utm_content) utmParams.append('utm_content', link.utm_content);
+          if (link.utm_term) utmParams.append('utm_term', link.utm_term);
+
+          // Construct the full URL with UTM parameters
+          const urlToCopy = utmParams.toString()
+            ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${utmParams.toString()}`
+            : baseUrl;
+
+          const textArea = document.createElement('textarea');
+          textArea.value = urlToCopy;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+
+          setCopiedLinkId(link.id);
+          setTimeout(() => setCopiedLinkId(null), 2000);
+        } catch (fallbackError) {
+          console.error('Fallback copy also failed:', fallbackError);
+        }
+      }
+    };
+
+    return (
+      <tr className="hover:bg-gray-50">
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
+                {video.video_info.title}
+              </div>
+              <div className="text-sm text-gray-500">
+                {new Date(video.video_info.published_at).toLocaleDateString()}
+              </div>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyYouTubeLink();
+              }}
+              className={`flex-shrink-0 ml-2 p-1.5 rounded transition-colors ${
+                copiedVideoId
+                  ? 'bg-green-100 text-green-600'
+                  : 'bg-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+              }`}
+              title={copiedVideoId ? 'Copied YouTube link!' : 'Copy YouTube video link'}
+            >
+              {copiedVideoId ? (
+                <CheckIcon className="h-4 w-4" />
+              ) : (
+                <ClipboardIcon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {formatNumber(video.video_info.view_count)}
+        </td>
+        <td className="px-6 py-4">
+          {video.utm_links.length === 0 ? (
+            <span className="text-sm text-gray-500">No UTM links</span>
+          ) : (
+            <div className="space-y-2">
+              {video.utm_links.map((link, index) => (
+                <div key={link.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-2 min-w-0">
+                  <div className="flex-1 min-w-0 mr-2">
+                    <div className="text-xs font-medium text-gray-900 truncate">
+                      UTM Link {index + 1}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {link.utm_campaign || link.pretty_slug || 'Default Campaign'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyUTMLink(link);
+                    }}
+                    className={`flex-shrink-0 p-1.5 rounded transition-colors ${
+                      copiedLinkId === link.id
+                        ? 'bg-green-100 text-green-600'
+                        : 'bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title={copiedLinkId === link.id ? 'Copied!' : 'Copy UTM link'}
+                  >
+                    {copiedLinkId === link.id ? (
+                      <CheckIcon className="h-4 w-4" />
+                    ) : (
+                      <ClipboardIcon className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {formatNumber(video.total_utm_clicks)}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {((video.click_through_rate || 0) * 100).toFixed(2)}%
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="flex space-x-2">
+            <GrowthIndicator value={video.weekly_growth.views_growth} />
+            <span className="text-gray-400">|</span>
+            <GrowthIndicator value={video.weekly_growth.clicks_growth} />
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
   if (loading.isLoading) {
     return (
@@ -344,13 +493,13 @@ const Analytics: NextPage = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Video
+                        Video & YouTube Link
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Views
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        UTM Links
+                        UTM Links & Actions
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Clicks
