@@ -709,17 +709,15 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
 
       {/* Bulk Actions */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">Bulk Actions</h3>
-            <p className="text-sm text-gray-600">Generate or manage UTM links for all videos at once</p>
-          </div>
+        <div className="mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Bulk Actions</h3>
+          <p className="text-sm text-gray-600">Generate or manage UTM links for all videos at once</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Bulk Generate Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-4">
               <Plus className="w-5 h-5 text-green-600" />
               <h4 className="font-medium text-gray-900">Bulk Generate UTM Links</h4>
             </div>
@@ -823,7 +821,7 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
             ) : (
               <button
                 onClick={() => setShowBulkGenerateForm(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
               >
                 <Plus className="w-4 h-4" />
                 Generate UTM Links for All Videos
@@ -834,12 +832,12 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
           {/* Bulk Delete Section */}
           {totalLinks > 0 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-4">
                 <Trash2 className="w-5 h-5 text-red-600" />
                 <h4 className="font-medium text-gray-900">Bulk Delete UTM Links</h4>
               </div>
 
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mb-4">
                 Currently managing {totalLinks} UTM links with {totalClicks} total clicks
               </p>
 
@@ -877,7 +875,7 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
                 ) : (
                   <button
                     onClick={handleBulkDelete}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+                    className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete All UTM Links
