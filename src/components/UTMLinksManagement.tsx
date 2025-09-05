@@ -402,67 +402,11 @@ const UTMLinksManagement: React.FC<UTMLinksManagementProps> = ({ refreshTrigger 
     );
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-600 mb-4">{error}</p>
-        <button
-          onClick={fetchUTMLinks}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  // Don't return early on error - show the bulk generate section even if fetching existing links fails
 
   return (
     <div className="space-y-6">
-      {/* Workflow Explanation */}
-      <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border-2 border-green-200">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-green-100 rounded-full">
-            <Link2 className="w-8 h-8 text-green-600" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">🎯 UTM Link Creation Workflow</h2>
-            <p className="text-sm text-gray-700 mb-4">
-              Create UTM tracking links for your YouTube videos with two powerful tracking methods:
-            </p>
-            <div className="grid md:grid-cols-2 gap-4 text-sm mb-4">
-              <div className="bg-white p-4 rounded-lg border-2 border-green-200">
-                <h4 className="font-bold text-green-800 mb-2">🎯 Direct GA4 (Recommended)</h4>
-                <ul className="space-y-1 text-gray-600">
-                  <li>✅ Perfect for YouTube video descriptions</li>
-                  <li>✅ Clean, professional-looking URLs</li>
-                  <li>✅ Faster loading (no redirect delay)</li>
-                  <li>✅ Better user experience</li>
-                </ul>
-                <p className="text-xs text-green-700 mt-2 font-medium">
-                  Creates: https://yourdestination.com?utm_source=youtube...
-                </p>
-              </div>
-              <div className="bg-white p-4 rounded-lg border-2 border-blue-200">
-                <h4 className="font-bold text-blue-800 mb-2">🔄 Server Redirect (Advanced)</h4>
-                <ul className="space-y-1 text-gray-600">
-                  <li>✅ Detailed click analytics</li>
-                  <li>✅ A/B testing capabilities</li>
-                  <li>✅ Complete data ownership</li>
-                  <li>✅ Custom business logic</li>
-                </ul>
-                <p className="text-xs text-blue-700 mt-2 font-medium">
-                  Creates: https://yourdomain.com/api/v1/go/pretty-link
-                </p>
-              </div>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-xs text-yellow-800">
-                <strong>💡 Quick Start:</strong> Use Direct GA4 for most YouTube links. Switch to Server Redirect when you need advanced analytics or A/B testing.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* Header */}
       <div className="text-center">
